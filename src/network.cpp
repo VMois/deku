@@ -34,7 +34,7 @@ in_addr Network::getLocalIPAddress() {
     sockaddr_in loopback;
 
     if (sock == -1) {
-        std::cerr << "Could not socket\n";
+        throw "Could not create socket";
     }
 
     std::memset(&loopback, 0, sizeof(loopback));
@@ -44,20 +44,22 @@ in_addr Network::getLocalIPAddress() {
 
     if (connect(sock, reinterpret_cast<sockaddr*>(&loopback), sizeof(loopback)) == -1) {
         close(sock);
-        std::cerr << "Could not connect\n";
+        throw "Could not connect to socket";
     }
 
     socklen_t addrlen = sizeof(loopback);
     if (getsockname(sock, reinterpret_cast<sockaddr*>(&loopback), &addrlen) == -1) {
         close(sock);
-        std::cerr << "Could not getsockname\n";
+        throw "Could not getsockname";
     }
 
     close(sock);
 
+    /* convert IP address to string 
     char buf[INET_ADDRSTRLEN];
     if (inet_ntop(AF_INET, &loopback.sin_addr, buf, INET_ADDRSTRLEN) == 0x0) {
-        std::cerr << "Could not inet_ntop\n";
+        throw "Could not inet_ntop";
     }
+    */
     return loopback.sin_addr;
 }

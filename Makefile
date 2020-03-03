@@ -5,7 +5,7 @@ HEADERS = $(wildcard src/*.h)
 OBJ = ${CPP_SOURCES:.cpp=.o}
 
 # -g: Use debugging symbols in gcc
-CFLAGS = -Wall -Wextra
+CFLAGS = -std=c++11 -Wall -Wextra
 
 build_docker: build_example
 	docker build -t deku .
