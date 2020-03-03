@@ -52,14 +52,6 @@ in_addr Network::getLocalIPAddress() {
         close(sock);
         throw "Could not getsockname";
     }
-
     close(sock);
-
-    /* convert IP address to string 
-    char buf[INET_ADDRSTRLEN];
-    if (inet_ntop(AF_INET, &loopback.sin_addr, buf, INET_ADDRSTRLEN) == 0x0) {
-        throw "Could not inet_ntop";
-    }
-    */
     return loopback.sin_addr;
 }
