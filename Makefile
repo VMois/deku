@@ -13,7 +13,7 @@ build_docker: build_example
 build_example: example
 
 example: ${OBJ} 
-	g++ ${OBJ} example.cpp -o example.o
+	g++ ${OBJ} -lhiredis example.cpp -o example.o
 
 %.o: %.cpp ${HEADERS}
 	g++ ${CFLAGS} -c $< -o $@

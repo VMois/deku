@@ -4,5 +4,5 @@ extern "C" {
 
 class Discover {
   public:
-    void test ();
+    void test(char* hostname);
 };

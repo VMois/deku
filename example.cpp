@@ -1,6 +1,7 @@
-#include "src/network.h"
+#include "src/discover.h"
 
 int main() {
-    Network network = Network();
+    Discover network = Discover();
+    network.test((char*) "redis");
     return 0;
 }
