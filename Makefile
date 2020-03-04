@@ -1,5 +1,5 @@
-CPP_SOURCES = $(wildcard src/*.cpp)
-HEADERS = $(wildcard src/*.h)
+CPP_SOURCES = $(wildcard src/*.cpp src/discover/*.cpp)
+HEADERS = $(wildcard src/*.h src/discover/*.h)
 
 # Nice syntax for file extension replacement
 OBJ = ${CPP_SOURCES:.cpp=.o}

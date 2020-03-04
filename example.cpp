@@ -1,7 +1,7 @@
-#include "src/discover.h"
+#include "src/discover/RedisDiscover.h"
 
 int main() {
-    Discover network = Discover();
-    network.test((char*) "redis");
+    RedisDiscover redis_discover = RedisDiscover();
+    redis_discover.notifyPeers();
     return 0;
 }
