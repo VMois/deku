@@ -8,17 +8,17 @@ RedisDiscover::~RedisDiscover() {
     redisFree(redis_client_);
 }
 
-char* RedisDiscover::getRedisHostNameFromEnv() {
+std::string RedisDiscover::getRedisHostNameFromEnv() {
     // TODO: read URL/Hostname from env variable
-    return (char*) "redis";
+    return "redis";
 }
 
 void RedisDiscover::connect() {
     struct timeval timeout = { 1, 500000 };
     int port = 6379;  // default Redis port
-    char* hostname = getRedisHostNameFromEnv();
+    std::string hostname = getRedisHostNameFromEnv();
 
-    redis_client_ = redisConnectWithTimeout(hostname, port, timeout);
+    redis_client_ = redisConnectWithTimeout(hostname.c_str(), port, timeout);
     if (redis_client_ == NULL || redis_client_->err) {
         if (redis_client_) {
             char err [128];
@@ -31,29 +31,24 @@ void RedisDiscover::connect() {
     }
 }
 
-void RedisDiscover::notifyPeers() {
-    if (redis_client_ == NULL) throw "Redis client is not available";
+std::vector<Multiaddr> RedisDiscover::getPeers() {
+    std::vector<Multiaddr> addresses;
+    redisReply* reply = (redisReply*) redisCommand(redis_client_, "LRANGE %s 0 -1", discover_list_.c_str());
 
-    printf("Notify peers \n");
-    redisReply *reply;
-    /* PING server
-    reply = (redisReply*) redisCommand(redis_client_, "PING");
-    printf("PING: %s\n", reply->str);
-    freeReplyObject(reply);*/
-
-    reply = (redisReply*) redisCommand(redis_client_,"LLEN %s", discover_list_);
-    printf("List len: %d\n", (int) reply->integer);
+    if (reply->type == REDIS_REPLY_ARRAY) {
+        for (unsigned int j = 0; j < reply->elements; j++) {
+            addresses.push_back(Multiaddr(reply->element[j]->str));
+        }
+    }
     freeReplyObject(reply);
-
-    /* Set a key */
-    /*reply = (redisReply*) redisCommand(redis_client_,"SET %s %s", "foo", "hello world");
-    printf("SET: %s\n", reply->str);
-    freeReplyObject(reply);*/
-
-     /* Try a GET and two INCR
-    reply = (redisReply*) redisCommand(redis_client_,"GET foo");
-    printf("GET foo: %s\n", reply->str);
-    freeReplyObject(reply);*/
+    return addresses;
 }
 
-void RedisDiscover::getPeers() { }
+void RedisDiscover::notifyPeers(Multiaddr address) {
+    if (redis_client_ == NULL) throw "Redis client is not available";
+
+    redisReply *reply;
+    // TODO: check for duplicates, do not push if found
+    reply = (redisReply*) redisCommand(redis_client_, "LPUSH %s %s", discover_list_, address.toString().c_str());
+    freeReplyObject(reply);
+}

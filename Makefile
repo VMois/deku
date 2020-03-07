@@ -1,19 +1,17 @@
-CPP_SOURCES = $(wildcard src/*.cpp src/discover/*.cpp)
-HEADERS = $(wildcard src/*.h src/discover/*.h)
+CPP_SOURCES = $(wildcard src/*.cpp src/*/*.cpp)
+HEADERS = $(wildcard src/*.h src/*/*.h)
 
 # Nice syntax for file extension replacement
 OBJ = ${CPP_SOURCES:.cpp=.o}
 
 # -g: Use debugging symbols in gcc
-CFLAGS = -std=c++11 -Wall -Wextra
+CFLAGS = -std=c++14 -Wall -Wextra
 
 build_docker: build_example
 	docker build -t deku .
 
-build_example: example
-
-example: ${OBJ} 
-	g++ ${OBJ} -lhiredis example.cpp -o example.o
+build_example: ${OBJ} 
+	g++ ${CFLAGS} ${OBJ} -lhiredis example.cpp -o example.o
 
 %.o: %.cpp ${HEADERS}
 	g++ ${CFLAGS} -c $< -o $@
@@ -21,3 +19,4 @@ example: ${OBJ}
 clean:
 	rm -rf *.o *.a
 	rm -rf src/*.o
+	rm -rf src/*/*.o

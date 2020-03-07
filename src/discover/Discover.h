@@ -1,5 +1,7 @@
+#include "../multiaddr/Multiaddr.h"
+
 class Discover {
   public:
-    virtual void notifyPeers() = 0;
-    virtual void getPeers() = 0;
+    virtual void notifyPeers(Multiaddr address) = 0;
+    virtual std::vector<Multiaddr> getPeers() = 0;
 };
