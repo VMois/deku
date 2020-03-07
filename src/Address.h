@@ -9,8 +9,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-class Network {
+class Address {
   public:
-    in_addr getLocalIPAddress();
-    void listInterfaces();
+    std::string getLocalIPv4Address();
 };
