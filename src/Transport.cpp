@@ -1,7 +1,7 @@
-#include "Address.h"
+#include "Transport.h"
 
 // Returns local IP address
-std::string Address::getLocalIPv4Address() {
+std::string Transport::getLocalIPv4Address() {
     // https://stackoverflow.com/questions/49335001/get-local-ip-address-in-c
     int sock = socket(PF_INET, SOCK_DGRAM, 0);
     sockaddr_in loopback;
@@ -37,4 +37,10 @@ std::string Address::getLocalIPv4Address() {
         std::string value(buf, INET_ADDRSTRLEN);
         return value;
     }
+}
+
+// Returs random free port
+int Transport::getFreePort() {
+    // TODO: find a way to check free ports and choose one
+    return 3434;
 }

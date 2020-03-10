@@ -9,7 +9,8 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-class Address {
+class Transport {
   public:
     std::string getLocalIPv4Address();
+    int getFreePort();
 };
