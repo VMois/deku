@@ -1,16 +1,17 @@
+#pragma once
 #include <string.h>
 #include <vector>
 extern "C" {
     #include <hiredis/hiredis.h>
 }
-#include "Discover.h"
+#include "../multiaddr/Multiaddr.h"
 
-class RedisDiscover: public Discover {
+class RedisDiscover {
     public:
         RedisDiscover();
         ~RedisDiscover();
-        virtual std::vector<Multiaddr> getPeers();
-        virtual void notifyPeers(Multiaddr address);
+        std::vector<Multiaddr> getPeers();
+        void notifyPeers(Multiaddr address);
     private:
         redisContext *redis_client_ = NULL;
 

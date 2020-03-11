@@ -20,7 +20,7 @@ build_tests: ${OBJ} ${TEST_OBJ}
 	g++ ${CFLAGS} ${TEST_OBJ} ${OBJ} -lhiredis -o tests.o
 
 build_example: ${OBJ} 
-	g++ ${CFLAGS} ${OBJ} -lhiredis example.cpp -o example.o
+	g++ ${CFLAGS} ${OBJ} -lhiredis -pthread example.cpp -o example.o
 
 %.o: %.cpp ${HEADERS}
 	g++ ${CFLAGS} -c $< -o $@

@@ -47,8 +47,13 @@ std::vector<Multiaddr> RedisDiscover::getPeers() {
 void RedisDiscover::notifyPeers(Multiaddr address) {
     if (redis_client_ == NULL) throw "Redis client is not available";
 
+    // Simple check for duplicates
+    std::vector<Multiaddr> peers = getPeers();
+     for (const Multiaddr& peer : peers)
+        if (peer.toString().compare(address.toString()) == 0)
+            return;
+
     redisReply *reply;
-    // TODO: check for duplicates, do not push if found
     reply = (redisReply*) redisCommand(redis_client_, "LPUSH %s %s", discover_list_, address.toString().c_str());
     freeReplyObject(reply);
 }

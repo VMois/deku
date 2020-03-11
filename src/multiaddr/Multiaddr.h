@@ -1,6 +1,6 @@
+#pragma once
 #include <string>
 #include <vector>
-//#include <map>
 #include "Protocol.h"
 
 class Multiaddr {
