@@ -11,7 +11,7 @@ class Multiaddr {
     public:
         Multiaddr(std::string address): multiaddr_(address) {};
         Multiaddr(char* address);
-        std::string toString();
+        std::string toString() const;
         std::string getIP4Address();
         int getPort();
 };

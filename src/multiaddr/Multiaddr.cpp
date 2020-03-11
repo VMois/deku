@@ -35,7 +35,7 @@ int Multiaddr::getPort() {
     return std::stoi(multiaddr_.substr(start_pos + 4, multiaddr_.length() - start_pos - 4));
 }
 
-std::string Multiaddr::toString() {
+std::string Multiaddr::toString() const {
     return multiaddr_;
 }
 
