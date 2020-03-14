@@ -1,5 +1,9 @@
 #include "Multiaddr.h"
 
+Multiaddr::Multiaddr() {
+    multiaddr_ = "";
+}
+
 Multiaddr::Multiaddr(char* address) {
     // TODO: possible check for validity of Multiaddr string
     //if (address[0] != '/')

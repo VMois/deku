@@ -9,6 +9,7 @@ class Multiaddr {
     static std::vector<Protocol> protocols; // for future
 
     public:
+        Multiaddr();
         Multiaddr(std::string address): multiaddr_(address) {};
         Multiaddr(char* address);
         std::string toString() const;
