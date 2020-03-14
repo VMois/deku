@@ -11,4 +11,4 @@ COPY . /app/
 WORKDIR /app
 RUN make build_example
 
-CMD ["./example.o"]
+CMD ["./build/example.o"]
