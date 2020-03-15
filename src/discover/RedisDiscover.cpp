@@ -1,9 +1,11 @@
 #include "RedisDiscover.h"
 
 RedisDiscover::RedisDiscover() {
-    connect();
+    redis_client_ = NULL;
+    tasks_list_ = "deku_tasks";
+    logger_ = spdlog::stdout_color_st("RedisDiscover");
 }
-
+ 
 RedisDiscover::~RedisDiscover() {
     redisFree(redis_client_);
 }
@@ -18,6 +20,8 @@ void RedisDiscover::connect() {
     int port = 6379;  // default Redis port
     std::string hostname = getRedisHostNameFromEnv();
 
+    logger_->debug("Connecting to Redis: {0}:{1}", hostname, port);
+
     redis_client_ = redisConnectWithTimeout(hostname.c_str(), port, timeout);
     if (redis_client_ == NULL || redis_client_->err) {
         if (redis_client_) {
@@ -31,11 +35,27 @@ void RedisDiscover::connect() {
     }
 }
 
-std::vector<Multiaddr> RedisDiscover::getPeers() {
-    std::vector<Multiaddr> addresses;
-    redisReply* reply = (redisReply*) redisCommand(redis_client_, "LRANGE %s 0 -1", discover_list_.c_str());
+std::vector<std::string> RedisDiscover::getTasks() {
+    std::vector<std::string> tasks;
+
+    redisReply* reply = (redisReply*) redisCommand(redis_client_, "LRANGE %s 0 -1", tasks_list_.c_str());
 
     if (reply->type == REDIS_REPLY_ARRAY) {
+        logger_->debug("Found {} tasks", reply->elements);
+        for (unsigned int j = 0; j < reply->elements; j++) {
+            tasks.push_back(reply->element[j]->str);
+        }
+    }
+    freeReplyObject(reply);
+    return tasks;
+}
+
+std::vector<Multiaddr> RedisDiscover::getAddresses(std::string task_name) {
+    std::vector<Multiaddr> addresses;
+    redisReply* reply = (redisReply*) redisCommand(redis_client_, "LRANGE %s 0 -1", task_name.c_str());
+
+    if (reply->type == REDIS_REPLY_ARRAY) {
+        logger_->debug("Found {0} peer(s) for {1} task", reply->elements, task_name);
         for (unsigned int j = 0; j < reply->elements; j++) {
             addresses.push_back(Multiaddr(reply->element[j]->str));
         }
@@ -44,16 +64,41 @@ std::vector<Multiaddr> RedisDiscover::getPeers() {
     return addresses;
 }
 
-void RedisDiscover::notifyPeers(Multiaddr address) {
+void RedisDiscover::notifyPeers(Multiaddr address, std::vector<std::string> new_tasks) {
     if (redis_client_ == NULL) throw "Redis client is not available";
+    redisReply *reply = NULL;
 
-    // Simple check for duplicates
-    std::vector<Multiaddr> peers = getPeers();
-     for (const Multiaddr& peer : peers)
-        if (peer.toString().compare(address.toString()) == 0)
-            return;
+    for (const std::string task : new_tasks) {
+        std::vector<std::string> tasks = getTasks();
+        std::vector<std::string>::iterator tasks_it = std::find(tasks.begin(), tasks.end(), task);
 
-    redisReply *reply;
-    reply = (redisReply*) redisCommand(redis_client_, "LPUSH %s %s", discover_list_, address.toString().c_str());
-    freeReplyObject(reply);
+        // add task if not found
+        if (tasks_it == tasks.end()) {
+            logger_->debug("Add {0} task to {1} list", task, tasks_list_);
+            reply = (redisReply*) redisCommand(redis_client_, "LPUSH %s %s", tasks_list_.c_str(), task.c_str());
+            freeReplyObject(reply);
+        }
+        
+        std::vector<Multiaddr> peers = getAddresses(task);
+        std::vector<Multiaddr>::iterator peers_it = std::find(peers.begin(), peers.end(), address);
+
+        // add address if not exists
+        if (peers_it == peers.end()) {
+            logger_->debug("Add {0} address to {1} task", address.toString(), task);
+            reply = (redisReply*) redisCommand(redis_client_, "LPUSH %s %s", task.c_str(), address.toString().c_str());
+            freeReplyObject(reply);
+        }
+    }
+}
+
+void RedisDiscover::notifyService(Multiaddr address, std::vector<std::string> tasks) {
+    logger_->debug("Starting notifyService...");
+    connect();
+
+    std::chrono::seconds duration(5);
+
+    while(1) {
+        notifyPeers(address, tasks);
+        std::this_thread::sleep_for(duration);
+    }
 }

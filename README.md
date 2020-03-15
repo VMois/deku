@@ -6,3 +6,4 @@ C++ zero-configuration networking library for microservices. Targeted platform L
 
 - `hiredis`
 - `msgpack-c`
+- `stdlog`, 1.x version

@@ -1,7 +1,14 @@
-#include "src/discover/RedisDiscover.h"
+#include "spdlog/spdlog.h"
+#include "src/Responder.h"
 
 int main() {
-    RedisDiscover redis_discover = RedisDiscover();
-    redis_discover.notifyPeers();
+    spdlog::set_level(spdlog::level::debug);
+    Responder r = Responder();
+
+    r.on("echo", [] (std::stringstream a) { 
+        return a; 
+    });
+    
+    r.start();
     return 0;
 }
