@@ -1,5 +1,14 @@
 #include "Multiaddr.h"
 
+Multiaddr::Multiaddr() {
+    multiaddr_ = "";
+}
+
+bool Multiaddr::operator==(const Multiaddr& rhs) const
+{
+    return multiaddr_.compare(rhs.toString()) == 0;
+}
+
 Multiaddr::Multiaddr(char* address) {
     // TODO: possible check for validity of Multiaddr string
     //if (address[0] != '/')
@@ -38,8 +47,3 @@ int Multiaddr::getPort() {
 std::string Multiaddr::toString() const {
     return multiaddr_;
 }
-
-std::vector<Protocol> Multiaddr::protocols = {
-    Protocol(4, 32, "ip4"),
-    Protocol(6, 16, "tcp")
-};
