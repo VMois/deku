@@ -8,7 +8,7 @@ int main() {
     r.on("echo", [] (std::stringstream a) { 
         return a; 
     });
-    
+
     r.start();
     return 0;
 }

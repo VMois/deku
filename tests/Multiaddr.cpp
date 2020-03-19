@@ -1,6 +1,6 @@
 #define CATCH_CONFIG_MAIN
-#include "../include/catch2.h"
-#include "../src/multiaddr/Multiaddr.h"
+#include "include/catch2.h"
+#include "src/multiaddr/Multiaddr.h"
 
 TEST_CASE("Multiaddr class", "[Multiaddr]" ) {
     Multiaddr correct_ip4_tcp("/ip4/172.16.2.3/tcp/1234");

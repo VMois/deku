@@ -1,3 +1,4 @@
+#pragma once
 #include <stdio.h> 
 #include <iostream>     
 #include <sys/types.h>
@@ -7,17 +8,17 @@
 #include <string> 
 #include <cstring>
 #include <arpa/inet.h>
-#pragma once
 #include <unistd.h>
 #include <map>
 #include <functional>
-#include <thread> 
+#include <thread>
+#include <algorithm>
 
 #include "multiaddr/Multiaddr.h"
+#include "Stream.h"
 
 class Transport {
   std::map<std::string, std::vector<std::function <void(int)>>> handlers;
-  std::vector<int> client_sockets_;
   int master_socket_;
 
   public:

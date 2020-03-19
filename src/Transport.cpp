@@ -52,43 +52,38 @@ void Transport::listenMultiaddr(Multiaddr multiaddr) {
     // create a master socket 
     if((master_socket_ = socket(AF_INET , SOCK_STREAM , 0)) == 0)
         throw "Socket creation failed";
-     
     // set master socket to allow multiple connections ,  
     // this is just a good habit, it will work without this  
     if(setsockopt(master_socket_, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, 
         sizeof(opt)) < 0 )
             throw "Setsockopt";
-     
+    
     // type of socket created  
     address.sin_family = AF_INET;
     address.sin_port = htons(multiaddr.getPort()); 
 
-    // Convert IPv4 and IPv6 addresses from text to binary form 
+    // Convert IPv4 and IPv6 addresses from text to binary form
     if(inet_pton(AF_INET, multiaddr.getIP4Address().c_str(), &address.sin_addr)<=0)  
-        throw "Invalid address / Address not supported \n";  
-         
+        throw "Invalid address / Address not supported \n";
+
     //bind the socket to localhost port 8888  
     if (bind(master_socket_, (struct sockaddr *)&address, sizeof(address)) < 0)
         throw "Bind failed";
-
-    printf("Registered %s:%d address for listening\n", multiaddr.getIP4Address().c_str(), multiaddr.getPort());   
-         
-    // try to specify maximum of 3 pending connections for the master socket  
-    if (listen(master_socket_, 3) < 0) {   
-        perror("listen");   
-        exit(EXIT_FAILURE);   
-    }
-
+    printf("Registered %s:%d address for listening\n", multiaddr.getIP4Address().c_str(), multiaddr.getPort());
 }
 
 // listen for incoming connections
 void Transport::start() { 
-    printf("Start listening...\n"); 
+    printf("Start listening...\n");
 
-    client_sockets_ = {0};
-
-    int addrlen, new_socket, max_sd, activity;  
+    int addrlen, new_socket, activity;  
     struct sockaddr_in address;
+
+    // try to specify maximum of 3 pending connections for the master socket  
+    if (listen(master_socket_, 5) < 0) {   
+        perror("listen");   
+        exit(EXIT_FAILURE);   
+    }
          
     // set of socket descriptors  
     fd_set readfds;
@@ -99,72 +94,29 @@ void Transport::start() {
         FD_ZERO(&readfds);   
      
         //add master socket to set  
-        FD_SET(master_socket_, &readfds);   
-        max_sd = master_socket_;   
-             
-        // add child sockets to set  
-        for (const int& sd : client_sockets_)   
-        {            
-            //if valid socket descriptor then add to read list  
-            if(sd > 0)   
-                FD_SET(sd, &readfds);   
-                 
-            //highest file descriptor number, need it for the select function  
-            if(sd > max_sd)   
-                max_sd = sd;   
-        }   
-     
+        FD_SET(master_socket_, &readfds);
+
         //wait for an activity on one of the sockets , timeout is NULL ,  
         //so wait indefinitely  
-        activity = select(max_sd + 1, &readfds, NULL, NULL , NULL);   
+        activity = select(master_socket_ + 1, &readfds, NULL, NULL, NULL);   
        
         if ((activity < 0) && (errno!=EINTR))   
             throw "Select error";   
              
-        //If something happened on the master socket ,  
-        //then its an incoming connection  
+        // If something happened on the master socket ,  
+        // then its an incoming connection  
         if (FD_ISSET(master_socket_, &readfds))   
         {   
             if ((new_socket = accept(master_socket_, 
-                (struct sockaddr *)&address, (socklen_t*)&addrlen))<0)   
-                throw "Accept error";   
+                (struct sockaddr *)&address, (socklen_t*)&addrlen))<0) {   
+                    throw "Accept error";   
+            }
              
             //inform user of socket number - used in send and receive commands  
             printf("New connection, socket fd is %d, ip is : %s , port : %d\n" , new_socket , inet_ntoa(address.sin_addr) , ntohs 
                   (address.sin_port));
-            
-            client_sockets_.push_back(new_socket);
-            fireEvent("new_incoming", new_socket);
-        }   
-             
-        //else its some IO operation on some other socket 
-        for (int& sd : client_sockets_)   
-        {    
-            if (FD_ISSET(sd, &readfds))   
-            { 
-                //Check if it was for closing , and also read the  
-                //incoming message  
-                char buffer;
-                std::size_t bytes_read = recv(sd, &buffer, 1, MSG_PEEK);
-                printf("Data: %d\n", bytes_read);
-                if (bytes_read == 0)   
-                {   
-                    // somebody disconnected, get his details and print  
-                    getpeername(sd, (struct sockaddr*)&address ,(socklen_t*)&addrlen);   
-                    printf("Host disconnected , ip %s , port %d \n" ,  
-                          inet_ntoa(address.sin_addr) , ntohs(address.sin_port));   
-                     
-                    // TODO: consider instead of setting to 0, remove socket from vector 
-                    // As for now, not an issue so will stay like that
-                    close(sd);   
-                    sd = 0;   
-                }
-                else 
-                {     
-                    fireEvent("incoming", sd);
-                }   
-            }   
-        }   
+            fireEvent("new_connection", new_socket);
+        }
     }
 }
 
