@@ -5,8 +5,8 @@ int main() {
     spdlog::set_level(spdlog::level::debug);
     Responder r = Responder();
 
-    r.on("echo", [] (std::stringstream a) { 
-        return a; 
+    r.on("echo", [] (const std::stringstream& input, std::stringstream& output) {
+        output.write(input.str().data(), input.str().size());
     });
 
     r.start();
