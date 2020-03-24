@@ -1,6 +1,8 @@
 # Deku
 
-C++ library for microservices. Inspired by [cote](https://github.com/dashersw/cote),[libp2p](https://github.com/libp2p/specs) and [Dask Distributed](https://distributed.dask.org/en/latest/). Project for "Basic of programming 2" course at Budapest University of Technology and Economics (BME). Targeted platform is **Linux** (Docker).
+C++ library for microservices. Inspired by [cote](https://github.com/dashersw/cote), [libp2p](https://github.com/libp2p/specs) and [Dask Distributed](https://distributed.dask.org/en/latest/). Targeted platform is **Linux** (Docker).
+
+Project for "Basic of programming 2" course at Budapest University of Technology and Economics (BME).
 
 ## Table of Contents
 
@@ -8,6 +10,7 @@ C++ library for microservices. Inspired by [cote](https://github.com/dashersw/co
 2. [High level overview](#hoverview)
 3. [Project structure](#structure)
 4. [Development](#dev)
+5. [Specification](#spec)
 
 ## Goal
 
@@ -27,7 +30,7 @@ To make a development process easier, I will assume that the network is secure a
 
 ## High level overview
 
-**Deku** (library name) will provide ability to create two types of **nodes** in the network (naming is taken from *cote* library):
+**Deku** (library name) will provide the ability to create two types of **nodes** in the network (naming is taken from *cote* library):
 
 - Responder
 - Requester
@@ -86,9 +89,11 @@ chunk size = 4 bytes
 encoded data = `\x01\x93\x01\x02 \x00\x03\x00\x00` (8 bytes, 2 chunks needed)
 ```
 
+Idea of control byte is taken from [unsigned-varint](https://github.com/multiformats/unsigned-varint#spec) specification for Multiaddr format.
+
 ### Message encoding/decoding
 
-On top of socket data handling, [**msgpack**](https://msgpack.org) serialization format is used for encoding/decoding messages between Requester and Responders. It is very simple, efficient format that does not require additional headers (opposite to Protobuf).
+On top of socket data handling, [**msgpack**](https://msgpack.org) serialization format is used for encoding/decoding messages between Requester and Responders. It is very simple, efficient format that does not require additional headers/schema.
 
 ### Protocols
 
