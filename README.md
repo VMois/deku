@@ -2,7 +2,7 @@
 
 C++ library for microservices. Inspired by [cote](https://github.com/dashersw/cote), [libp2p](https://github.com/libp2p/specs) and [Dask Distributed](https://distributed.dask.org/en/latest/). Targeted platform is **Linux** (Docker).
 
-Project for "Basic of programming 2" course at Budapest University of Technology and Economics (BME).
+Project for "Basics of programming 2" course at Budapest University of Technology and Economics (BME).
 
 ## Table of Contents
 
@@ -93,11 +93,29 @@ Idea of control byte is taken from [unsigned-varint](https://github.com/multifor
 
 ### Message encoding/decoding
 
-On top of socket data handling, [**msgpack**](https://msgpack.org) serialization format is used for encoding/decoding messages between Requester and Responders. It is very simple, efficient format that does not require additional headers/schema.
+On top of socket data handling, [**msgpack**](https://msgpack.org) serialization format is used for encoding/decoding internal messages between Requester and Responder. It is very simple, efficient format that does not require additional headers/schema.
 
-### Protocols
+### Protocol
 
-| name         | code (int) | function  |
-| ------------ |:----------:|:---------:|
-| process job  | 2          | execute requested function with user-defined input bytes and return byte results |
-| ping         | 1          | check if Responder is up, returns "pong" in byte results |
+To be able to understand what type of operations must be executed by both and how data is structured Deku has a custom protocol. Each message include **operation id** and related data in form of string (which represents bytes) encoded as **msgpack**. The general overview of operations are listed in this table:
+
+| operation name | operation id | function  |
+| -------------- |:------------:|:---------:|
+| process job    | 2          | execute requested function with user-defined bytes input and return execution byte results |
+| ping           | 1          | check if Responder is up, Responder returns "pong" in byte results |
+
+### Operations processing
+
+In the current version, by design, Responder is opening a new thread for every new network connection (new thread for a new Requester connection). Inside the thread, if a new job arrives, Responder will process it then send result back to Requester and after will continue waiting for a new message. Shortly, **one operation at a time for every connected Requester**.
+
+Advantages:
+
+- the thread is responsible for the whole socket lifetime, easy management.
+- multiple Requesters will have non-blocking job execution. Responder can process Requester's jobs independently.
+
+Disadvantages:
+
+- if job takes a long time to complete, all other operations like ping etc. will be delayed.
+- each new connection will cost a minimum of 8MB of RAM (thread stack allocation) + memory needed for operations execution. Not very scalable solution for a big numbers of machines.
+
+Better alternatives are sitting in my mind... :)
