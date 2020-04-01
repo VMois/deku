@@ -7,8 +7,6 @@
 extern "C" {
     #include <hiredis/hiredis.h>
 }
-#include "spdlog/spdlog.h"
-#include "spdlog/sinks/stdout_color_sinks.h"
 #include "src/multiaddr/Multiaddr.h"
 
 class RedisDiscover {
@@ -23,7 +21,6 @@ class RedisDiscover {
     private:
         redisContext *redis_client_;
         std::string tasks_list_;
-        std::shared_ptr<spdlog::logger> logger_;
 
         std::string getRedisHostNameFromEnv();
         void connect();

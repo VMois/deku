@@ -67,6 +67,8 @@ External libraries used:
 - `stdlog` (1.x version), logging library
 - `catch2`, testing framework
 
+More on setup later...
+
 <a name="spec"></a>
 
 ## Specification
@@ -106,14 +108,14 @@ To be able to understand what type of operations must be executed by both and ho
 
 ### Operations processing
 
-In the current version, by design, Responder is opening a new thread for every new network connection (new thread for a new Requester connection). Inside the thread, if a new job arrives, Responder will process it then send result back to Requester and after will continue waiting for a new message. Shortly, **one operation at a time for every connected Requester**.
+In the current version, by design, Responder is opening a new thread for every new network connection (new thread for a new Requester connection). Inside the thread, if a new job arrives, Responder will process it, then send result back to Requester and after, will continue waiting for a new message. Shortly, **one operation at a time for every connected Requester**.
 
-Advantages:
+*Advantages:*
 
-- the thread is responsible for the whole socket lifetime, easy management.
-- multiple Requesters will have non-blocking job execution. Responder can process Requester's jobs independently.
+- the thread is responsible for the socket lifetime, easier management.
+- Responder will be able to execute in parallel multiple operations for multile Requesters.
 
-Disadvantages:
+*Disadvantages:*
 
 - if job takes a long time to complete, all other operations like ping etc. will be delayed.
 - each new connection will cost a minimum of 8MB of RAM (thread stack allocation) + memory needed for operations execution. Not very scalable solution for a big numbers of machines.
