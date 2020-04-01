@@ -1,5 +1,5 @@
 CPP_SOURCES = $(wildcard src/*.cpp src/*/*.cpp)
-TEST_SOURCES = $(wildcard tests/*.cpp)
+TEST_SOURCES = $(wildcard tests/cpp/*.cpp)
 HEADERS = $(wildcard src/*.h src/*/*.h)
 
 # Nice syntax for file extension replacement
