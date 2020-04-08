@@ -15,7 +15,6 @@
 #include <algorithm>
 
 #include "multiaddr/Multiaddr.h"
-#include "Stream.h"
 
 class Transport {
   std::map<std::string, std::vector<std::function <void(int)>>> handlers;
@@ -23,7 +22,10 @@ class Transport {
 
   public:
     Transport(): master_socket_(0) {};
-    // ~Transport();  TODO: clean master_socket
+
+    // TODO: clean master_socket
+    // ~Transport();
+    
     std::string getLocalIPv4Address();
     int getFreePort();
 

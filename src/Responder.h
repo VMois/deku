@@ -3,13 +3,12 @@
 #include <sstream>
 #include <map>
 #include <thread>
-#include <math.h> 
 #include "spdlog/spdlog.h"
-#include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/fmt/bin_to_hex.h"
 #include "src/multiaddr/Multiaddr.h"
 #include "src/discover/RedisDiscover.h"
 #include "src/Transport.h"
+#include "src/Packer.h"
 #include "msgpack.hpp"
 
 class Responder {
@@ -18,7 +17,6 @@ class Responder {
     Transport transport_;
     std::map<std::string, std::function <void(const std::stringstream&, std::stringstream&)>> handlers_;
     std::vector<std::string> listTasks();
-    std::shared_ptr<spdlog::logger> logger_;
   public:
     Responder();
     void on(std::string task_name, std::function <void(const std::stringstream&, std::stringstream&)> handler);
