@@ -21,7 +21,7 @@ build_tests: ${OBJ} ${TEST_OBJ}
 	g++ ${CFLAGS} ${PATHS} ${TEST_OBJ} ${OBJ} ${LIBRARIES} -o build/tests.o
 
 build_example: ${OBJ} 
-	g++ ${CFLAGS} ${PATHS} ${OBJ} example.cpp ${LIBRARIES} -o build/example.o
+	g++ ${CFLAGS} ${PATHS} ${OBJ} examples/responder.cpp ${LIBRARIES} -o build/responder.o
 	
 %.o: %.cpp ${HEADERS}
 	g++ ${CFLAGS} ${PATHS} ${LIBRARIES} -c $< -o $@
