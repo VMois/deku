@@ -13,26 +13,22 @@
 #include <functional>
 #include <thread>
 #include <algorithm>
+#include <cassert>
 
-#include "multiaddr/Multiaddr.h"
+#include <zmq.hpp>
 
 class Transport {
-  std::map<std::string, std::vector<std::function <void(int)>>> handlers;
-  int master_socket_;
+  std::function <void(zmq::socket_t&)> new_data_function_;
+
+  void *worker(zmq::context_t &context);
 
   public:
-    Transport(): master_socket_(0) {};
-
-    // TODO: clean master_socket
+    // TODO: clean zmq
     // ~Transport();
     
     std::string getLocalIPv4Address();
     int getFreePort();
 
-    void start();
-    void on(std::string event_name, 
-            std::function <void(int)> handler);
-    
-    void fireEvent(std::string event_name, int socket);
-    void listenMultiaddr(Multiaddr address);
+    void on_new_data(std::function <void(zmq::socket_t&)> function);
+    void listen(zmq::context_t &context, std::string address);
 };

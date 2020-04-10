@@ -18,7 +18,7 @@ There are a few goals for this project:
 
 1. Learn C++ and it's advanced features.
 
-2. Learn low-level networking or simply - socket programming. That is why, for example, [boost](https://www.boost.org) libraries are not used.
+2. Learn low-level networking or simply - socket programming. ~~That is why, for example, [boost](https://www.boost.org) libraries are not used.~~. Change of mind happend. Because, reliable networking is very complex even for simple distributed application, I decided to use [ZeroMQ](https://zeromq.org). I am still working with sockets but in a little bit different way :)
 
 3. Learn the basics of distributed systems by implementing a simple one.
 
@@ -43,7 +43,6 @@ From a graph theory perspective, Responders and Requesters are two **independent
 
 ![simple network diagram](high_overview.png)
 
-
 <a name="structure"></a>
 
 ## Project structure
@@ -64,6 +63,7 @@ External libraries used:
 
 - `hiredis`, to connect to Redis memory storage
 - `msgpack-c`, to serialize/deserialize data
+- `zmq`, ZeroMQ - networking library
 - `stdlog` (1.x version), logging library
 - `catch2`, testing framework
 
