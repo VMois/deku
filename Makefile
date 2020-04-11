@@ -8,7 +8,7 @@ TEST_OBJ = ${TEST_SOURCES:.cpp=.o}
 
 # -g: Use debugging symbols in gcc
 CFLAGS = -std=c++14 -Wall -Wextra
-LIBRARIES = -pthread -lzmq -lhiredis -DSPDLOG_COMPILED_LIB -lspdlog
+LIBRARIES = -ldeku -pthread -lzmq -lhiredis -DSPDLOG_COMPILED_LIB -lspdlog
 PATHS = -Llibs -I. -Iinclude 
 
 build_docker: build_example
@@ -20,12 +20,15 @@ run_tests: build_tests
 build_client:
 	g++ ${CFLAGS} ${PATHS} tests/client.cpp ${LIBRARIES} -o build/client.o
 
-build_tests: ${OBJ} ${TEST_OBJ}
-	g++ ${CFLAGS} ${PATHS} ${TEST_OBJ} ${OBJ} ${LIBRARIES} -o build/tests.o
+build_tests: build_lib ${TEST_OBJ}
+	g++ ${CFLAGS} ${PATHS} ${TEST_OBJ} ${LIBRARIES} -o build/tests.o
 
-build_example: ${OBJ} 
-	g++ ${CFLAGS} ${PATHS} ${OBJ} examples/responder.cpp ${LIBRARIES} -o build/responder.o
-	
+build_example: build_lib
+	g++ ${CFLAGS} ${PATHS} examples/responder.cpp ${LIBRARIES} -o build/responder.o
+
+build_lib: ${OBJ}
+	ar rvs libs/libdeku.a src/*.o src/*/*.o
+
 %.o: %.cpp ${HEADERS}
 	g++ ${CFLAGS} ${PATHS} ${LIBRARIES} -c $< -o $@
 

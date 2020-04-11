@@ -46,7 +46,7 @@ int Transport::getFreePort()
     return 3434;
 }
 
-void *Transport::worker(zmq::context_t &context)
+void Transport::worker(zmq::context_t &context)
 {
     zmq::socket_t workers (context, ZMQ_REP);
     workers.connect("inproc://workers");

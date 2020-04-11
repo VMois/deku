@@ -9,8 +9,6 @@
 #include <cstring>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <map>
-#include <functional>
 #include <thread>
 #include <algorithm>
 #include <cassert>
@@ -20,7 +18,7 @@
 class Transport {
   std::function <void(zmq::socket_t&)> new_data_function_;
 
-  void *worker(zmq::context_t &context);
+  void worker(zmq::context_t &context);
 
   public:
     // TODO: clean zmq

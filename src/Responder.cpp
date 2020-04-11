@@ -51,10 +51,8 @@ void Responder::start() {
                 spdlog::info("Return data: {}", spdlog::to_hex(output.str()));
                 int size = output.str().size();
 
-                //zmq::message_t reply (size);
-                //memcpy((void *) reply.data(), output.str().data(), size);
-                zmq::message_t reply (6);
-                memcpy((void *) reply.data(), "Hello", 6);
+                zmq::message_t reply (size);
+                memcpy((void *) reply.data(), output.str().data(), size);
                 host.send(reply);
                 }
                 break;

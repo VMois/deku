@@ -46,20 +46,20 @@ std::vector<std::string> RedisDiscover::getTasks() {
     return tasks;
 }
 
-std::vector<Multiaddr> RedisDiscover::getAddresses(std::string task_name) {
-    std::vector<Multiaddr> addresses;
+std::vector<std::string> RedisDiscover::getAddresses(std::string task_name) {
+    std::vector<std::string> addresses;
     redisReply* reply = (redisReply*) redisCommand(redis_client_, "LRANGE %s 0 -1", task_name.c_str());
 
     if (reply->type == REDIS_REPLY_ARRAY) {
         for (unsigned int j = 0; j < reply->elements; j++) {
-            addresses.push_back(Multiaddr(reply->element[j]->str));
+            addresses.push_back(std::string(reply->element[j]->str));
         }
     }
     freeReplyObject(reply);
     return addresses;
 }
 
-void RedisDiscover::notifyPeers(Multiaddr address, std::vector<std::string> new_tasks) {
+void RedisDiscover::notifyPeers(std::string address, std::vector<std::string> new_tasks) {
     if (redis_client_ == NULL) throw "Redis client is not available";
     redisReply *reply = NULL;
 
@@ -73,18 +73,18 @@ void RedisDiscover::notifyPeers(Multiaddr address, std::vector<std::string> new_
             freeReplyObject(reply);
         }
         
-        std::vector<Multiaddr> peers = getAddresses(task);
-        std::vector<Multiaddr>::iterator peers_it = std::find(peers.begin(), peers.end(), address);
+        std::vector<std::string> peers = getAddresses(task);
+        std::vector<std::string>::iterator peers_it = std::find(peers.begin(), peers.end(), address);
 
         // add address if not exists
         if (peers_it == peers.end()) {
-            reply = (redisReply*) redisCommand(redis_client_, "LPUSH %s %s", task.c_str(), address.toString().c_str());
+            reply = (redisReply*) redisCommand(redis_client_, "LPUSH %s %s", task.c_str(), address.c_str());
             freeReplyObject(reply);
         }
     }
 }
 
-void RedisDiscover::notifyService(Multiaddr address, std::vector<std::string> tasks) {
+void RedisDiscover::notifyService(std::string address, std::vector<std::string> tasks) {
     connect();
 
     std::chrono::seconds duration(5);
