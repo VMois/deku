@@ -1,6 +1,6 @@
 # Deku
 
-C++ library for microservices. Inspired by [cote](https://github.com/dashersw/cote), [libp2p](https://github.com/libp2p/specs) and [Dask Distributed](https://distributed.dask.org/en/latest/). Targeted platform is **Linux** (Docker).
+C++ library for microservices. Inspired by [cote](https://github.com/dashersw/cote) and [Dask Distributed](https://distributed.dask.org/en/latest/). Powered by [ZeroMQ](https://zeromq.org).Targeted platform is **Linux** (Docker).
 
 Project for "Basics of programming 2" course at Budapest University of Technology and Economics (BME).
 
