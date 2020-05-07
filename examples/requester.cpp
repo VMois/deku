@@ -1,17 +1,12 @@
-#include "msgpack.hpp"
-#include "src/Client.h"
+#include <iostream>
+#include "src/Requester.h"
 
 int main() {
-    msgpack::type::tuple<std::string, std::string> job("echo", "hello");
-    std::stringstream buffer;
-    msgpack::pack(buffer, job);
-    buffer.seekg(0);
-
-    Client cli = Client();
-    cli.connect("tcp://localhost:5543");
-    zmsg_t *msg = zmsg_new ();
-    zmsg_addstr(msg, buffer.str().c_str());
-    zmsg_t *reply = cli.request(&msg);
-    // zmsg_dump(reply);
+    Requester req = Requester();
+    std::stringstream s;
+    s.write("hello", 5);
+    zmsg_t *reply = req.send("echo", s);
+    std::cout << reply << std::endl;
+    zmsg_dump(reply);
     return 0;
 }

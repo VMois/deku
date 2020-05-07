@@ -5,10 +5,8 @@ FROM ubuntu:bionic
 RUN apt-get update && apt-get install -y g++ make
 
 # install Redis C client
-RUN apt-get install -y libhiredis-dev=0.13.3-2.2
+RUN apt-get install -y libczmq-dev libhiredis-dev=0.13.3-2.2
 
 COPY . /app/
 WORKDIR /app
-RUN make build_example
-
-CMD ["./build/example.o"]
+RUN make clean && make build_example

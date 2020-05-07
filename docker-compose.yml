@@ -1,9 +1,18 @@
 version: '3'
 services:
-  deku:
+  responder:
     build: .
+    command: ./build/responder.o
     tty: true
     links:
-    - redis
+      - redis
+  requester:
+    build: .
+    command: ./build/requester.o
+    tty: true
+    links:
+      - redis
   redis:
+    logging:
+      driver: none
     image: redis

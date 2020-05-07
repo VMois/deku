@@ -45,15 +45,17 @@ void Responder::worker(zsock_t* task_receiver, zsock_t* result_submitter) {
 }
 
 void Responder::start() {
-    /*std::thread discover_thread(&RedisDiscover::notifyService, &redis_discover_, multiaddr_, listTasks());
+    address_ = getLocalIPv4Address();
+    std::cout << address_ << std::endl;
+    std::thread discover_thread(&RedisDiscover::notifyService, &redis_discover_, address_, listTasks());
     if (discover_thread.joinable()) {
         discover_thread.detach();
-    }*/
+    }
     
     // TODO: destroy sockets on Ctrl+C/Z
     zsock_t *server = zsock_new(ZMQ_ROUTER);
-    zsock_set_identity(server, "tcp://localhost:5543");
-    zsock_bind(server, "tcp://*:5543");
+    zsock_set_identity(server, address_.c_str());
+    zsock_bind(server, "tcp://*:3434");
 
     zsock_t *task_sender = zsock_new(ZMQ_PUSH);
     zsock_bind(task_sender, "inproc://tasks");

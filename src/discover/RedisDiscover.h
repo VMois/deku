@@ -17,10 +17,10 @@ class RedisDiscover {
         std::vector<std::string> getTasks();
         void notifyPeers(std::string address, std::vector<std::string> tasks);
         void notifyService(std::string address, std::vector<std::string> tasks);
+        void connect();
     private:
         redisContext *redis_client_;
         std::string tasks_list_;
 
         std::string getRedisHostNameFromEnv();
-        void connect();
 };
