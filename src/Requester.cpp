@@ -14,8 +14,10 @@ zmsg_t* Requester::send(std::string task_name, const std::stringstream& data) {
     zmsg_t *msg = zmsg_new();
     zmsg_addstr(msg, task_name.c_str());
     zmsg_addstr(msg, data.str().c_str());
+    std::cout << "send request" << std::endl;
     zmsg_t *reply = cli_.request(&msg);
-    std::cout << "send" << std::endl;
+    // std::cout << "response" << std::endl;
+    // std::cout << reply << std::endl;
     return reply;
 }
 

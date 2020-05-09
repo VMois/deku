@@ -36,6 +36,7 @@ void Responder::worker(zsock_t* task_receiver, zsock_t* result_submitter) {
         zmsg_t* results = zmsg_new();
         zmsg_prepend(results, &identity);
         zmsg_append(results, &control);
+        zmsg_addstr(results, "MORE");
         zmsg_addstr(results, function_name.c_str());
         zmsg_addmem(results, output.str().data(), output.str().size());
         zmsg_send(&results, result_submitter);
@@ -74,9 +75,10 @@ void Responder::start() {
     // TODO: think about replacing it with zactor from ZeroMQ
     std::thread w(&Responder::worker, this, task_receiver, result_submitter);
     w.detach();
+
     bool is_job = false;
     while (true) {
-        zsock_t* which = (zsock_t *) zpoller_wait (poller, 10 * ZMQ_POLL_MSEC);
+        zsock_t* which = (zsock_t *) zpoller_wait (poller, 1 * ZMQ_POLL_MSEC);
         if (which == result_receiver) {
             // job is processed and results are ready to be sent
             zmsg_t *job = zmsg_recv(result_receiver);
@@ -124,7 +126,7 @@ void Responder::start() {
             // reply
             zmsg_destroy (&request);
             zmsg_prepend (reply, &identity);
-            zmsg_print(reply);
+            // zmsg_print(reply);
             zmsg_send (&reply, server);
         }
     }

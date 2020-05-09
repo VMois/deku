@@ -5,6 +5,7 @@ services:
     command: ./build/responder.o
     tty: true
     links:
+      # - requester
       - redis
   requester:
     build: .
