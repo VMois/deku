@@ -1,4 +1,5 @@
 #pragma once
+#include <iostream>
 #include <string>
 extern "C" {
     #include "czmq.h"
@@ -12,7 +13,7 @@ extern "C" {
 #define SERVER_TTL      6000    //  msecs
 
 class Client {
-    zactor_t *pipe_; 
+    zactor_t *worker_; 
     public:
         Client();
         ~Client();
@@ -28,7 +29,7 @@ class Server {
         int64_t expires_;
         Server(std::string endpoint);
         void ping(zsock_t *socket);
-        void tickless(uint64_t tickless);
+        void tickless(uint64_t& tickless);
 };
 
 class Agent {
@@ -37,11 +38,8 @@ class Agent {
         zpoller_t *poller_;
         zsock_t *router_;               //  Socket to talk to servers
         zhash_t *servers_;           //  Servers we've connected to
-        zlist_t *actives_;           //  Servers we know are alive
-        uint sequence_;              //  Number of requests ever sent
         zmsg_t *request_;            //  Current request if any
-        zmsg_t *reply_;              //  Current reply if any
-        int64_t expires_;  
+        uint64_t expires_;  
         Agent(zsock_t* pipe);
         ~Agent();
 };

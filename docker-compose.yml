@@ -11,6 +11,7 @@ services:
     command: ./build/requester.o
     tty: true
     links:
+      - responder
       - redis
   redis:
     logging:

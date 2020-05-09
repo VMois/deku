@@ -3,39 +3,40 @@
 static void flcliapi_agent (zsock_t *pipe, void *args);
 
 Client::Client() {
-    pipe_ = zactor_new(flcliapi_agent, NULL);
+    worker_ = zactor_new(flcliapi_agent, NULL);
 }
 
 Client::~Client() {
-    zactor_destroy(&pipe_);
+    zactor_destroy(&worker_);
 }
 
 void Client::connect(std::string endpoint) {
     zmsg_t *msg = zmsg_new();
     zmsg_addstr(msg, "CONNECT");
     zmsg_addstr(msg, endpoint.c_str());
-    zactor_send(pipe_, &msg);
+    zactor_send(worker_, &msg);
     zclock_sleep (100);
 }
 
 zmsg_t* Client::request(zmsg_t **msg) {
-    zmsg_pushstr (*msg, "REQUEST");
-    zmsg_send (msg, pipe_);
-    zmsg_t *reply = zmsg_recv(pipe_);
-    if (reply) {
+    zmsg_pushstr(*msg, "REQUEST");
+    zmsg_send(msg, worker_);
+    zmsg_t *reply = zmsg_recv(worker_);
+    /*if (reply) {
         char *status = zmsg_popstr (reply);
-        if (streq (status, "FAILED"))
-            zmsg_destroy (&reply);
-        free (status);
-    }
+        if (streq (status, "FAILED")) {
+            zmsg_destroy(&reply);
+        }
+        free(status);
+    }*/
     return reply;
 }
 
 Server::Server(std::string endpoint) {
     endpoint_ = endpoint;
     alive_ = false;
-    ping_at_ = zclock_time () + PING_INTERVAL;
-    expires_ = zclock_time () + SERVER_TTL;
+    ping_at_ = zclock_time() + PING_INTERVAL;
+    expires_ = zclock_time() + SERVER_TTL;
 }
 
 void Server::ping(zsock_t* socket) {
@@ -48,7 +49,7 @@ void Server::ping(zsock_t* socket) {
     }
 }
 
-void Server::tickless(uint64_t tickless) {
+void Server::tickless(uint64_t& tickless) {
     if (tickless > ping_at_) {
         tickless = ping_at_;
     }
@@ -56,18 +57,17 @@ void Server::tickless(uint64_t tickless) {
 
 Agent::Agent(zsock_t* pipe) {
     pipe_ = pipe;
+    request_ = NULL;
     router_ = zsock_new(ZMQ_ROUTER);
     poller_ = zpoller_new(pipe_);
     zpoller_add(poller_, router_);
     servers_ = zhash_new ();
-    actives_ = zlist_new ();
 }
 
 Agent::~Agent() {
+    zsock_destroy(&router_);
     zhash_destroy (&servers_);
-    zlist_destroy (&actives_);
     zmsg_destroy (&request_);
-    zmsg_destroy (&reply_);
     zpoller_destroy(&poller_);
 }
 
@@ -82,24 +82,29 @@ void agent_control_message (Agent& self)
     zmsg_t *msg = zmsg_recv (self.pipe_);
     char *command = zmsg_popstr (msg);
 
-    if (streq (command, "CONNECT")) {
+    if (streq(command, "CONNECT")) {
         char *endpoint = zmsg_popstr (msg);
-        printf ("I: connecting to %s…\n", endpoint);
-        int rc = zsock_connect(self.router_, endpoint);
-        assert (rc == 0);
-        Server *server = new Server(endpoint);
-        zhash_insert (self.servers_, endpoint, server);
-        zhash_freefn (self.servers_, endpoint, s_server_free);
-        zlist_append (self.actives_, server);
-        server->ping_at_ = zclock_time () + PING_INTERVAL;
-        server->expires_ = zclock_time () + SERVER_TTL;
-        free (endpoint);
+        // check if server is already on the list of connected server
+        if (zhash_lookup(self.servers_, endpoint) == NULL) {
+            printf ("I: connecting to %s…\n", endpoint);
+            int rc = zsock_connect(self.router_, endpoint);
+            assert (rc == 0);
+            Server *server = new Server(endpoint);
+            zhash_insert (self.servers_, endpoint, server);
+            zhash_freefn (self.servers_, endpoint, s_server_free);
+            server->ping_at_ = zclock_time () + PING_INTERVAL;
+            server->expires_ = zclock_time () + SERVER_TTL;
+        }
+        free(endpoint);
     } else if (streq (command, "REQUEST")) {
-        assert(!self.request_);    //  Strict request-reply cycle
+        //  Strict request-reply cycle
+        // TODO: made buffer for multiple requests
+        assert(!self.request_);
+        std::cout << "request command" <<std::endl;
         //  Prefix request with sequence number and empty envelope
         // char sequence_text [10];
         // sprintf (sequence_text, "%u", ++self->sequence);
-        zmsg_pushstr(msg, "REQUEST");
+        zmsg_pushstr(msg, "TASK");
         //  Take ownership of request message
         self.request_ = msg;
         msg = NULL;
@@ -110,11 +115,8 @@ void agent_control_message (Agent& self)
     zmsg_destroy (&msg);
 }
 
-//  This method processes one message from a connected
-//  server:
-
-void agent_router_message (Agent& self)
-{
+//  This method processes one message from a connected server
+void agent_router_message (Agent& self) {
     zmsg_t *reply = zmsg_recv (self.router_);
 
     //  Frame 0 is server that replied
@@ -123,31 +125,27 @@ void agent_router_message (Agent& self)
     assert (server);
     free (endpoint);
     if (!server->alive_) {
-        zlist_append (self.actives_, server);
-        server->alive_ = 1;
+        server->alive_ = true;
     }
     server->ping_at_ = zclock_time () + PING_INTERVAL;
     server->expires_ = zclock_time () + SERVER_TTL;
 
-    //  Frame 1 may be sequence number for reply
-    char *sequence = zmsg_popstr (reply);
-
-    // TODO: remove
-    zmsg_dump(reply);
-    if (atoi (sequence) == self.sequence_) {
-        zmsg_pushstr (reply, "OK");
+    char *control = zmsg_popstr (reply);
+    if (streq(control, "TASK")) {
+        // zmsg_print(reply);
         zmsg_send (&reply, self.pipe_);
         zmsg_destroy(&self.request_);
+        self.request_ = NULL;
     } else {
         zmsg_destroy (&reply);
     }
 }
 
 
-static void flcliapi_agent (zsock_t *pipe, void *args)
+static void flcliapi_agent(zsock_t *pipe, void *args)
 {
+    zsock_signal(pipe, 0);
     Agent self = Agent(pipe);
-    zsock_signal (pipe, 0);
 
     while (1) {
         //  Calculate tickless timer, up to 1 hour
@@ -156,8 +154,6 @@ static void flcliapi_agent (zsock_t *pipe, void *args)
             tickless = self.expires_;
         }
 
-        // zhash_foreach (self->servers, server_tickless, &tickless);
-        zlist_t *servers = zhash_keys (self.servers_);
         Server* item = (Server*) zhash_first(self.servers_);
         while(item) {
             item->tickless(tickless);
@@ -176,28 +172,30 @@ static void flcliapi_agent (zsock_t *pipe, void *args)
         if (self.request_) {
             if (zclock_time() >= self.expires_) {
                 //  Request expired, kill it
-                zstr_send (self.pipe_, "FAILED");
-                zmsg_destroy (&self.request_);
+                zstr_send(self.pipe_, "FAILED");
+                zmsg_destroy(&self.request_);
+                self.request_ = NULL;
             } else {
-                //  Find server to talk to, remove any expired ones
-                while (zlist_size (self.actives_)) {
-                    Server *server = (Server*) zlist_first (self.actives_);
+                // Find server to talk to, remove any expired ones
+                Server* server = (Server*) zhash_first(self.servers_);
+                while(server) {
                     if (zclock_time () >= server->expires_) {
-                        zlist_pop (self.actives_);
-                        server->alive_ = 0;
+                        server->alive_ = false;
                     } else {
                         zmsg_t *request = zmsg_dup(self.request_);
-                        zmsg_pushstr (request, server->endpoint_.c_str());
-                        zmsg_send (&request, self.router_);
+                        zmsg_pushstr(request, server->endpoint_.c_str());
+                        zmsg_send(&request, self.router_);
+                        zmsg_destroy(&self.request_);
+                        self.request_ = NULL;
                         break;
                     }
+                    server = (Server*) zhash_next(self.servers_);
                 }
             }
         }
 
         //  Disconnect and delete any expired servers
         //  Send heartbeats to idle servers if needed
-        //  zhash_foreach (self->servers, server_ping, self->router);
         item = (Server*) zhash_first(self.servers_);
         while(item) {
             item->ping(self.router_);

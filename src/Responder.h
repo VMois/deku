@@ -8,8 +8,7 @@ extern "C" {
     #include <czmq.h>
 }
 
-#include "msgpack.hpp"
-#include "src/discover/RedisDiscover.h"
+#include "discover/RedisDiscover.h"
 #include "config.h"
 
 class Responder {

@@ -32,14 +32,12 @@ void Responder::worker(zsock_t* task_receiver, zsock_t* result_submitter) {
         input.write((char*) zframe_data(input_frame), zframe_size(input_frame));
         std::stringstream output;
         this->run(function_name, input, output);
-        std::cout << "run done" << std::endl;
 
         zmsg_t* results = zmsg_new();
         zmsg_prepend(results, &identity);
         zmsg_append(results, &control);
         zmsg_addstr(results, function_name.c_str());
         zmsg_addmem(results, output.str().data(), output.str().size());
-        std::cout << "ready to submit results" << std::endl;
         zmsg_send(&results, result_submitter);
     } 
 }
@@ -76,51 +74,47 @@ void Responder::start() {
     // TODO: think about replacing it with zactor from ZeroMQ
     std::thread w(&Responder::worker, this, task_receiver, result_submitter);
     w.detach();
-
+    bool is_job = false;
     while (true) {
-        zsock_t *which = (zsock_t *) zpoller_wait (poller, 10 * ZMQ_POLL_MSEC);
+        zsock_t* which = (zsock_t *) zpoller_wait (poller, 10 * ZMQ_POLL_MSEC);
         if (which == result_receiver) {
             // job is processed and results are ready to be sent
             zmsg_t *job = zmsg_recv(result_receiver);
-            std::cout << "Job done" << std::endl;
-            zmsg_dump(job);
+            // std::cout << "job done" << std::endl;
+            // zmsg_dump(job);
             zmsg_send(&job, server);
+            is_job = false;
         } else if (which == server) {
             // process incoming request
             zmsg_t *request = zmsg_recv(server);
             zmsg_dump(request);
             zframe_t *identity = zmsg_pop(request);
             zframe_t *control = zmsg_pop(request);
-            zframe_t *data = zmsg_pop(request);
 
             zmsg_t *reply = zmsg_new ();
 
             if (zframe_streq (control, "PING")) {
                 zmsg_addstr(reply, "PONG");
-            } else if (zframe_streq(control, "REQUEST")) {
+            } else if (zframe_streq(control, "TASK")) {
                 // new job submitted
-                std::cout << "new task" << std::endl;
-                zmsg_t *task = zmsg_new ();
-                msgpack::object_handle oh = msgpack::unpack((char*) zframe_data(data), 
-                                                        zframe_size(data));
-                msgpack::object deserialized = oh.get();
-                msgpack::type::tuple<std::string, std::string> job_metadata;
-                deserialized.convert(job_metadata);
-                std::cout << "deserialized" << std::endl;
+                std::cout << "new request" << std::endl;
+               
+                zframe_t *function_name_frame = zmsg_pop(request);
+                zframe_t *function_data_frame = zmsg_pop(request);
 
+                zmsg_t *task = zmsg_new ();
                 zframe_t* identity_copy = zframe_dup(identity);
                 zframe_t* control_copy = zframe_dup(control);
                 zmsg_prepend(task, &identity_copy);
                 zmsg_append(task, &control_copy);
-                zmsg_addstr(task, job_metadata.get<0>().c_str());
+                zmsg_append(task, &function_name_frame);
                 // TODO: instead of copying data pass a pointer
-                zmsg_addstr(task, job_metadata.get<1>().c_str());
+                zmsg_append(task, &function_data_frame);
                 std::cout << "msg prepared" << std::endl;
 
                 zmsg_send(&task, task_sender);
                 std::cout << "task send" << std::endl;
-
-                zmsg_add(reply, control);
+                zmsg_append(reply, &control);
                 zmsg_addstr(reply, "OK");
             } else {
                 zmsg_add (reply, control);
@@ -130,7 +124,7 @@ void Responder::start() {
             // reply
             zmsg_destroy (&request);
             zmsg_prepend (reply, &identity);
-            zmsg_dump (reply);
+            zmsg_print(reply);
             zmsg_send (&reply, server);
         }
     }

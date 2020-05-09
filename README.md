@@ -98,4 +98,4 @@ Here you can find information how to setup a project and compile it by yourself.
 
 ## Why "Deku"?
 
-more on library name
+...
