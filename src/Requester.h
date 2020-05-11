@@ -5,7 +5,7 @@ extern "C" {
     #include <czmq.h>
 }
 
-#include "Client.h"
+#include "client/Client.h"
 #include "discover/RedisDiscover.h"
 
 class Requester {
@@ -13,5 +13,5 @@ class Requester {
     RedisDiscover redis_discover_;
     public:
         Requester();
-        zmsg_t* send(std::string task_name, const std::stringstream& data);
+        std::stringstream send(std::string task_name, std::string data);
 };

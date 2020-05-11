@@ -123,11 +123,10 @@ void Responder::start() {
                 zmsg_addstr (reply, "Opcode is not found");
             }
 
-            // reply
-            zmsg_destroy (&request);
-            zmsg_prepend (reply, &identity);
+            zmsg_destroy(&request);
+            zmsg_prepend(reply, &identity);
             // zmsg_print(reply);
-            zmsg_send (&reply, server);
+            zmsg_send(&reply, server);
         }
     }
 }
