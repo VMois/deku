@@ -31,7 +31,7 @@ build_lib: ${OBJ}
 	ar rvs libs/libdeku.a src/*.o src/*/*.o
 
 %.o: %.cpp ${HEADERS}
-	g++ ${CFLAGS} ${PATHS} ${LIBRARIES} -c $< -o $@
+	g++ ${CFLAGS} ${PATHS} -c $< -o $@
 
 clean:
 	rm -rf *.o *.a
