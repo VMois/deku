@@ -30,7 +30,11 @@ void Responder::worker(zsock_t* task_receiver, zsock_t* result_submitter) {
         std::stringstream input;
         input.write((char*) zframe_data(input_frame), zframe_size(input_frame));
         std::stringstream output;
+
+        // TODO: add try/catch block
         this->run(function_name, input, output);
+
+        // TODO: what will happen if output stream is empty?
 
         zmsg_t* results = zmsg_new();
         zmsg_prepend(results, &identity);
@@ -77,7 +81,7 @@ void Responder::start() {
 
     bool already_job = false;
     while (true) {
-        zsock_t* which = (zsock_t *) zpoller_wait (poller, 1 * ZMQ_POLL_MSEC);
+        zsock_t* which = (zsock_t *) zpoller_wait(poller, 1 * ZMQ_POLL_MSEC);
         if (which == result_receiver) {
             // job results are ready to be sent
             zmsg_t *job = zmsg_recv(result_receiver);

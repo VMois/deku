@@ -28,7 +28,7 @@ zmsg_t* Requester::request(zmsg_t **msg) {
     return zmsg_recv(worker_);
 }
 
-std::stringstream Requester::send(std::string task_name, const std::string data) {
+std::stringstream Requester::send(std::string task_name, std::string data) {
     std::vector<std::string> responders = redis_discover_.getAddresses(task_name);
     for (int i = 0; i < responders.size(); i++) {
         connect(responders[i]);
@@ -59,6 +59,7 @@ static void worker(zsock_t *pipe, void *args) {
     zsock_signal(pipe, 0);
     
     Agent agent = Agent(pipe);
+    bool all_servers_busy = true;
 
     while (true) {
         // calculate tickless timer, up to 1 hour
@@ -87,7 +88,6 @@ static void worker(zsock_t *pipe, void *args) {
         if (agent.request_) {
             if (zclock_mono() >= agent.expires_) {
                 //  Request expired, kill it
-                std::cout << "set failed" << std::endl; 
                 zstr_send(agent.pipe_, "FAILED");
                 zmsg_destroy(&agent.request_);
                 agent.request_ = NULL;
@@ -112,10 +112,18 @@ static void worker(zsock_t *pipe, void *args) {
 
         //  Disconnect and delete any expired servers
         //  Send heartbeats to idle servers if needed
+        all_servers_busy = true;
         item = (Server*) zhash_first(agent.servers_);
         while(item) {
             item->ping(agent.router_);
+            if (!item->used_) {
+                all_servers_busy = false;
+            }
             item = (Server*) zhash_next(agent.servers_);
+        }
+
+        if (all_servers_busy) {
+            agent.unlock_servers();
         }
     }
 }

@@ -7,7 +7,7 @@ extern "C" {
 #include "Server.h"
 
 //  If no server replies within this time, abandon request
-#define REQUEST_TIMEOUT  2000   //  msecs
+#define REQUEST_TIMEOUT  3000   //  msecs
 
 class Agent {
     public:

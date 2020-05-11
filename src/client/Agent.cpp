@@ -94,9 +94,6 @@ void Agent::process_router() {
             unlock_servers();
         } else if (streq(status, "BUSY")) {
             server->used_ = true;
-            zmsg_t *request = zmsg_dup(request_);
-            zmsg_pushstr(request, "REQUEST");
-            zmsg_send(&request, pipe_);
         }
     } else {
         zmsg_destroy (&reply);
