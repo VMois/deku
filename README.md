@@ -4,6 +4,31 @@ C++ library for microservices. Inspired by [cote](https://github.com/dashersw/co
 
 Project for "Basics of programming 2" course at Budapest University of Technology and Economics (BME).
 
+Simplified example:
+
+- responder.cpp
+
+```c++
+Responder res = Responder();
+
+// return the same data that was received
+res.on("echo", [] (const std::stringstream& input, std::stringstream& output) {
+    output.write(input.str().data(), input.str().size());
+});
+
+res.start(); // blocking
+```
+
+- requester.cpp
+
+```c++
+Requester req = Requester();
+std::stringstream input;
+input.write("hello world", 10);
+req.send("echo", input);
+// == "hello world"
+```
+
 ## Table of Contents
 
 1. [Goal](#goal)
@@ -53,7 +78,22 @@ From a graph theory perspective, Responders and Requesters are two **independent
 
 Here you can find the design description of the library. Code is not discussed here. If you are interested in implementation, please, check [Implementation](#impl) section.
 
+### Responder
+
 ...
+
+### Requester
+
+...
+
+### Protocol
+
+Operations table:
+
+| Opcode    | Description | States             |
+|:---------:|:-----------:|:------------------:|
+| PING      | check if Responder is alive by sending probe request ||
+| TASK      | accpeting and rejecting jobs from Requester    |   OK, FAILED, MORE |
 
 <a name="impl"></a>
 
