@@ -93,7 +93,7 @@ Operations table:
 | Opcode    | Description | States             |
 |:---------:|:-----------:|:------------------:|
 | PING      | check if Responder is alive by sending probe request ||
-| TASK      | accpeting and rejecting jobs from Requester    |   OK, FAILED, MORE |
+| TASK      | accepting and rejecting jobs from Requester    |   OK, BUSY, RESULT |
 
 <a name="impl"></a>
 

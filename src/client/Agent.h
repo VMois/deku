@@ -7,11 +7,7 @@ extern "C" {
 #include "Server.h"
 
 //  If no server replies within this time, abandon request
-#define REQUEST_TIMEOUT  3000    //  msecs
-//  PING interval for servers we think are alive
-#define PING_INTERVAL   2000    //  msecs
-//  Server considered dead if silent for this long
-#define SERVER_TTL      6000    //  msecs
+#define REQUEST_TIMEOUT  2000   //  msecs
 
 class Agent {
     public:

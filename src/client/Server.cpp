@@ -8,6 +8,11 @@ Server::Server(std::string endpoint) {
     expires_ = zclock_mono() + SERVER_TTL;
 }
 
+void Server::refreshTimers() {
+    ping_at_ = zclock_mono() + PING_INTERVAL;
+    expires_ = zclock_mono() + SERVER_TTL;
+}
+
 void Server::ping(zsock_t* socket) {
     if (zclock_mono() >= ping_at_) {
         zmsg_t *ping = zmsg_new();

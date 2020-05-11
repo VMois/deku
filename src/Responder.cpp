@@ -21,7 +21,6 @@ std::vector<std::string> Responder::listTasks() {
 void Responder::worker(zsock_t* task_receiver, zsock_t* result_submitter) {
     while(true) {
         zmsg_t* task = zmsg_recv(task_receiver);
-        std::cout << "new task" << std::endl;
         zframe_t *identity = zmsg_pop(task);
         zframe_t *control = zmsg_pop(task);
         zframe_t *func_name = zmsg_pop(task);
@@ -36,7 +35,7 @@ void Responder::worker(zsock_t* task_receiver, zsock_t* result_submitter) {
         zmsg_t* results = zmsg_new();
         zmsg_prepend(results, &identity);
         zmsg_append(results, &control);
-        zmsg_addstr(results, "MORE");
+        zmsg_addstr(results, "RESULT");
         zmsg_addstr(results, function_name.c_str());
         zmsg_addmem(results, output.str().data(), output.str().size());
         zmsg_send(&results, result_submitter);
@@ -45,7 +44,7 @@ void Responder::worker(zsock_t* task_receiver, zsock_t* result_submitter) {
 
 void Responder::start() {
     address_ = getLocalIPv4Address();
-    std::cout << address_ << std::endl;
+
     std::thread discover_thread(&RedisDiscover::notifyService, &redis_discover_, address_, listTasks());
     if (discover_thread.joinable()) {
         discover_thread.detach();
@@ -76,16 +75,14 @@ void Responder::start() {
     std::thread w(&Responder::worker, this, task_receiver, result_submitter);
     w.detach();
 
-    bool is_job = false;
+    bool already_job = false;
     while (true) {
         zsock_t* which = (zsock_t *) zpoller_wait (poller, 1 * ZMQ_POLL_MSEC);
         if (which == result_receiver) {
-            // job is processed and results are ready to be sent
+            // job results are ready to be sent
             zmsg_t *job = zmsg_recv(result_receiver);
-            // std::cout << "job done" << std::endl;
-            // zmsg_dump(job);
             zmsg_send(&job, server);
-            is_job = false;
+            already_job = false;
         } else if (which == server) {
             // process incoming request
             zmsg_t *request = zmsg_recv(server);
@@ -98,34 +95,36 @@ void Responder::start() {
             if (zframe_streq (control, "PING")) {
                 zmsg_addstr(reply, "PONG");
             } else if (zframe_streq(control, "TASK")) {
-                // new job submitted
-                std::cout << "new request" << std::endl;
-               
-                zframe_t *function_name_frame = zmsg_pop(request);
-                zframe_t *function_data_frame = zmsg_pop(request);
+                // new job
+                if (!already_job) {
+                    zframe_t *function_name_frame = zmsg_pop(request);
+                    zframe_t *function_data_frame = zmsg_pop(request);
 
-                zmsg_t *task = zmsg_new ();
-                zframe_t* identity_copy = zframe_dup(identity);
-                zframe_t* control_copy = zframe_dup(control);
-                zmsg_prepend(task, &identity_copy);
-                zmsg_append(task, &control_copy);
-                zmsg_append(task, &function_name_frame);
-                // TODO: instead of copying data pass a pointer
-                zmsg_append(task, &function_data_frame);
-                std::cout << "msg prepared" << std::endl;
+                    zmsg_t *task = zmsg_new ();
+                    zframe_t* identity_copy = zframe_dup(identity);
+                    zframe_t* control_copy = zframe_dup(control);
+                    zmsg_prepend(task, &identity_copy);
+                    zmsg_append(task, &control_copy);
+                    zmsg_append(task, &function_name_frame);
+                    // TODO: instead of copying data pass a pointer
+                    zmsg_append(task, &function_data_frame);
 
-                zmsg_send(&task, task_sender);
-                std::cout << "task send" << std::endl;
-                zmsg_append(reply, &control);
-                zmsg_addstr(reply, "OK");
+                    zmsg_send(&task, task_sender);
+                    already_job = true;
+                    zmsg_append(reply, &control);
+                    zmsg_addstr(reply, "OK");
+                } else {
+                    zmsg_append(reply, &control);
+                    zmsg_addstr(reply, "BUSY");
+                }
             } else {
+                // TODO: replace with some general error response
                 zmsg_add (reply, control);
                 zmsg_addstr (reply, "Opcode is not found");
             }
 
             zmsg_destroy(&request);
             zmsg_prepend(reply, &identity);
-            // zmsg_print(reply);
             zmsg_send(&reply, server);
         }
     }
