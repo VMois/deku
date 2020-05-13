@@ -23,9 +23,8 @@ res.start(); // blocking
 
 ```c++
 Requester req = Requester();
-std::stringstream input;
-input.write("hello world", 10);
-req.send("echo", input);
+std::stringstream reply = req.send("echo", "hello world");
+std::cout << reply.str() << std::endl;
 // == "hello world"
 ```
 
@@ -64,13 +63,13 @@ To make a development process easier, I will assume that the network is secure a
 - Responder
 - Requester
 
-Generally, *Responder* will provide certain functions that *Requester* can call. *Responder* will process the results and send them back to *Requester*. Functions are developed by library users.
+Generally, *Responder* will provide certain functions that *Requester* can excecute. *Responder* will process the job(s) sent by *Requester* and return results back. Functions are developed by library users.
 
-The number of Responders and Requesters can be dynamically adjusted. New nodes can be added to the network and removed. *Deku* will handle the discovery of other nodes and communication between them. The current plan is to use [Redis](https://redis.io) in-memory storage for the discovery purposes.
+The number of Responders and Requesters can be dynamically adjusted. New nodes can be added to the network and removed. *Deku* will handle the discovery of new nodes and communication between them. Currently, the only supported way of discoverying is to use [Redis](https://redis.io) in-memory storage.
 
 From a graph theory perspective, Responders and Requesters are two **independent** sets in the directed bipartite graph. *Responders* communicate **only** with *Requesters* and vice-versa. Responders cannot start communication with Requesters. It reduces the number of connections needed and simplifies the design.
 
-![simple network diagram](high_overview.png)
+![simple network diagram](images/high_overview.png)
 
 <a name="spec"></a>
 
@@ -80,7 +79,9 @@ Here you can find the design description of the library. Code is not discussed h
 
 ### Responder
 
-...
+*Responder* is designed to be a non-blocking server. While jobs are excecuting inside **workers**, other incoming requests can be handled by **main thread**. When job is ready, worker will communicate it to the main thread and main thread will send the results back to *Requester*. Currently, only single worker is supported (one job at a time), but it can be extended pretty easly.
+
+![Responder overview diagram](images/responder_spec.png)
 
 ### Requester
 
