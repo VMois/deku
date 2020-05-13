@@ -79,28 +79,30 @@ Here you can find the design description of the library. Code is not discussed h
 
 ### Responder
 
-*Responder* is designed to be a non-blocking server. While jobs are excecuting inside **workers**, other incoming requests can be handled by **main thread**. When job is ready, worker will communicate it to the main thread and main thread will send the results back to *Requester*. Currently, only single worker is supported (one job at a time), but it can be extended pretty easly.
+*Responder* is designed to be a non-blocking server. While jobs are excecuting inside **workers** in the background, other incoming messages can be handled by **main thread**. When job is ready, worker will communicate it to the main thread and main thread will send the results back to *Requester*. Currently, only single worker is supported (one job at a time), but it can be extended pretty easly.
 
 ![Responder overview diagram](images/responder_spec.png)
 
 ### Requester
 
-...
+*Requester* is asynchronous client that is using similar idea as *Responder*. It creates a separate **single** worker in the background that can send and receive messages independently. Main client is communicating with worker to send or receive messages. Currently, one message at the time is supported. This can be extended.
+
+Because *Deku* doesn't have a centralised scheduler, independent *Requesters* are responsible for scheduling their own jobs. Current algorithm is using approach described in [ZeroMQ guide](http://zguide.zeromq.org/page:all#toc112). *Requester* will try each known *Responder* one by one until it succeceed or job expired.
 
 ### Protocol
 
-Operations table:
+*Requester* and *Responder* are using a set of pre-defined operational codes (**opcodes**) to communicate over the network. Based on value of opcode, they will take a different action. A simplified list of opcodes with short desciption is specified below.
 
-| Opcode    | Description | States             |
-|:---------:|:-----------:|:------------------:|
-| PING      | check if Responder is alive by sending probe request ||
-| TASK      | accepting and rejecting jobs from Requester    |   OK, BUSY, RESULT |
+| Opcode(s)    | Description | States             |
+|:----------:|:-----------:|:------------------:|
+| PING/PONG  | check if Responder is alive by sending probe request ||
+| TASK       | accepting and rejecting jobs from Requester |   OK, BUSY, RESULT |
 
 <a name="impl"></a>
 
 ## Implementation
 
-Here implementation details of the project are discussed. Deku is written in **C++14** and was tested only on **Linux**.
+Here implementation details of the project are discussed. Deku is written in **C++14** and was tested only on **Linux**. **ZeroMQ** is the backbone networking and threading library.
 
 <a name="structure"></a>
 
@@ -109,10 +111,11 @@ Here implementation details of the project are discussed. Deku is written in **C
 Root files structure:
 
 - `build/` - executable files
+- `examples/` - example of using the library
 - `include/` - headers or source code of external libraries
 - `libs/`- compiled external libraries (*.a or *.so extensions)
 - `src/` - source code (*.cpp and *.h extensions)
-- `tests/` - unit tests
+- `Makefile` - collection of commands to build a C++ project
 
 <a name="external"></a>
 
@@ -120,7 +123,7 @@ Root files structure:
 
 External libraries used:
 
-- `hiredis`, C library to connect to Redis in-memory storage
+- `hiredis`, C library to connect to Redis
 - `czmq`, high-level C Binding for ZeroMQ
 
 <a name="dev"></a>
