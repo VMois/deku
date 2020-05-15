@@ -13,7 +13,7 @@ class Server {
     public:
         std::string endpoint_;
         bool alive_;
-        bool used_;
+        bool busy_;
         int64_t ping_at_;
         int64_t expires_;
         Server(std::string endpoint);

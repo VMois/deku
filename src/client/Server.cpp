@@ -3,7 +3,7 @@
 Server::Server(std::string endpoint) {
     endpoint_ = endpoint;
     alive_ = false;
-    used_ = false;
+    busy_ = false;
     ping_at_ = zclock_mono() + PING_INTERVAL;
     expires_ = zclock_mono() + SERVER_TTL;
 }

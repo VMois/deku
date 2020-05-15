@@ -19,7 +19,7 @@ Agent::~Agent() {
 void Agent::unlock_servers() {
     Server* item = (Server*) zhash_first(servers_);
     while(item) {
-        item->used_ = false;
+        item->busy_ = false;
         item = (Server*) zhash_next(servers_);
     }
 }
@@ -93,9 +93,79 @@ void Agent::process_router() {
             request_ = NULL;
             unlock_servers();
         } else if (streq(status, "BUSY")) {
-            server->used_ = true;
+            server->busy_ = true;
         }
     } else {
         zmsg_destroy (&reply);
+    }
+}
+
+void Agent::start() {
+    bool all_servers_busy = true;
+
+    while (true) {
+        // calculate tickless timer, up to 1 hour
+        uint64_t tickless = zclock_mono() + 1000 * 3600;
+        if (request_ && tickless > expires_) {
+            tickless = expires_;
+        }
+
+        Server* item = (Server*) zhash_first(servers_);
+        while(item) {
+            if (tickless > item->ping_at_) {
+                tickless = item->ping_at_;
+            }
+            item = (Server*) zhash_next(servers_);
+        }
+
+        zsock_t *which = (zsock_t *) zpoller_wait (poller_, (tickless - zclock_mono ()) * ZMQ_POLL_MSEC);
+        if (which == pipe_) {
+            process_control();
+        }
+        if (which == router_) {
+            process_router();
+        }
+
+        //  If we're processing a request, dispatch to next server
+        if (request_) {
+            if (zclock_mono() >= expires_) {
+                //  Request expired, kill it
+                zstr_send(pipe_, "FAILED");
+                zmsg_destroy(&request_);
+                request_ = NULL;
+                unlock_servers();
+            } else {
+                // Find server to talk to, remove any expired ones
+                Server* server = (Server*) zhash_first(servers_);
+                while(server) {
+                    if (zclock_mono () >= server->expires_) {
+                        server->alive_ = false;
+                    } else if (!server->busy_) {
+                        zmsg_t *request = zmsg_dup(request_);
+                        zmsg_pushstr(request, server->endpoint_.c_str());
+                        zmsg_send(&request, router_);
+                        server->busy_ = true;
+                        break;
+                    }
+                    server = (Server*) zhash_next(servers_);
+                }
+            }
+        }
+
+        //  Disconnect and delete any expired servers
+        //  Send heartbeats to idle servers if needed
+        all_servers_busy = true;
+        item = (Server*) zhash_first(servers_);
+        while(item) {
+            item->ping(router_);
+            if (!item->busy_) {
+                all_servers_busy = false;
+            }
+            item = (Server*) zhash_next(servers_);
+        }
+
+        if (all_servers_busy) {
+            unlock_servers();
+        }
     }
 }
