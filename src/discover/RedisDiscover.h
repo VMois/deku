@@ -9,6 +9,11 @@ extern "C" {
 }
 
 class RedisDiscover {
+    redisContext *redis_client_;
+    std::string tasks_list_;
+
+    std::string getRedisHostNameFromEnv();
+
     public:
         RedisDiscover();
         ~RedisDiscover();
@@ -18,9 +23,4 @@ class RedisDiscover {
         void notifyPeers(std::string address, std::vector<std::string> tasks);
         void notifyService(std::string address, std::vector<std::string> tasks);
         void connect();
-    private:
-        redisContext *redis_client_;
-        std::string tasks_list_;
-
-        std::string getRedisHostNameFromEnv();
 };

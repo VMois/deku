@@ -6,13 +6,9 @@ extern "C" {
 }
 
 #include "client/Agent.h"
-#include "discover/RedisDiscover.h"
 
 class Requester {
     zactor_t *worker_;
-    RedisDiscover redis_discover_;
-
-    void connect(std::string endpoint);
     zmsg_t* request(zmsg_t **msg);
 
     public:

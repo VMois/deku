@@ -1,18 +1,24 @@
 #include "Agent.h"
 
 Agent::Agent(zsock_t* pipe) {
+    // TODO: remove connect() from here
+    redis_discover_.connect();
+
     pipe_ = pipe;
     request_ = NULL;
     router_ = zsock_new(ZMQ_ROUTER);
     poller_ = zpoller_new(pipe_);
     zpoller_add(poller_, router_);
-    servers_ = zhash_new ();
+    servers_ = zhash_new();
+
+    // update server list asap when Agent starts
+    next_discovery_ = zclock_mono();
 }
 
 Agent::~Agent() {
     zsock_destroy(&router_);
-    zhash_destroy (&servers_);
-    zmsg_destroy (&request_);
+    zhash_destroy(&servers_);
+    zmsg_destroy(&request_);
     zpoller_destroy(&poller_);
 }
 
@@ -24,34 +30,16 @@ void Agent::unlock_servers() {
     }
 }
 
-static void s_server_free (void *argument)
-{
+static void s_server_free (void *argument) {
     Server* server = (Server *) argument;
     delete server;
 }
 
-void Agent::process_control()
-{
+void Agent::process_control() {
     zmsg_t *msg = zmsg_recv(pipe_);
     char *command = zmsg_popstr(msg);
 
-    if (streq(command, "CONNECT")) {
-        char *endpoint = zmsg_popstr(msg);
-        // check if server is already on the list of connected server
-        if (zhash_lookup(servers_, endpoint) == NULL) {
-            int rc = zsock_connect(router_, endpoint);
-            // TODO: replace assert with something more reliable
-            assert (rc == 0);
-
-            // TODO: use zmonitor to check if enpoint is connected
-            zclock_sleep(5);
-
-            Server *server = new Server(endpoint);
-            zhash_insert(servers_, endpoint, server);
-            zhash_freefn(servers_, endpoint, s_server_free);
-        }
-        free(endpoint);
-    } else if (streq(command, "REQUEST")) {
+    if (streq(command, "REQUEST")) {
         if (request_ != NULL) {
             throw std::logic_error("Request already exists, cannot process a new one");
         }
@@ -66,19 +54,50 @@ void Agent::process_control()
     zmsg_destroy(&msg);
 }
 
-//  This method processes one message from a connected server
+void Agent::discover_servers() {
+    if (zclock_mono() < next_discovery_) {
+        // too early to discover new servers, skip
+        return;
+    }
+
+    // TODO: this is a quick and not efficient implementation, need improvement in future.
+    std::vector<std::string> all_tasks = redis_discover_.getTasks();
+    for (const std::string& task_name : all_tasks) {
+        std::vector<std::string> responders = redis_discover_.getAddresses(task_name);
+
+        for (const std::string& endpoint: responders) {
+            if (zhash_lookup(servers_, endpoint.c_str()) == NULL) {
+                int rc = zsock_connect(router_, endpoint.c_str());
+                if (rc != 0) continue;
+
+                // TODO: use zmonitor to check if enpoint is connected.
+                // need to add a small sleep so new connection can appear in socket
+                zclock_sleep(5);
+
+                Server *server = new Server(endpoint);
+                zhash_insert(servers_, endpoint.c_str(), server);
+                zhash_freefn(servers_, endpoint.c_str(), s_server_free);
+            }
+        }
+    }
+    next_discovery_ = zclock_mono() + DISCOVERY_INTERVAL;
+    tickless_ = next_discovery_;
+}
+
+// this method processes a single message from a connected server
 void Agent::process_router() {
-    zmsg_t *reply = zmsg_recv (router_);
+    zmsg_t *reply = zmsg_recv(router_);
 
     // frame 0 is server that replied
     char *endpoint = zmsg_popstr(reply);
     Server *server = (Server *) zhash_lookup(servers_, endpoint);
-    // TODO: replace assert with something else
-    assert(server);
+    if (server == NULL) return;
+
     free(endpoint);
     server->alive_ = true;
     server->refreshTimers();
-    
+
+    // process frame 1, which is a control frame
     char *control = zmsg_popstr(reply);
 
     if (streq(control, "TASK")) {
@@ -105,20 +124,22 @@ void Agent::start() {
 
     while (true) {
         // calculate tickless timer, up to 1 hour
-        uint64_t tickless = zclock_mono() + 1000 * 3600;
-        if (request_ && tickless > expires_) {
-            tickless = expires_;
+        tickless_ = zclock_mono() + 1000 * 3600;
+        if (request_ && tickless_ > expires_) {
+            tickless_ = expires_;
         }
 
         Server* item = (Server*) zhash_first(servers_);
         while(item) {
-            if (tickless > item->ping_at_) {
-                tickless = item->ping_at_;
+            if (tickless_ > item->ping_at_) {
+                tickless_ = item->ping_at_;
             }
             item = (Server*) zhash_next(servers_);
         }
 
-        zsock_t *which = (zsock_t *) zpoller_wait (poller_, (tickless - zclock_mono ()) * ZMQ_POLL_MSEC);
+        discover_servers();
+
+        zsock_t *which = (zsock_t *) zpoller_wait (poller_, (tickless_ - zclock_mono ()) * ZMQ_POLL_MSEC);
         if (which == pipe_) {
             process_control();
         }
@@ -126,7 +147,7 @@ void Agent::start() {
             process_router();
         }
 
-        //  If we're processing a request, dispatch to next server
+        // processing a request, choose a server
         if (request_) {
             if (zclock_mono() >= expires_) {
                 //  Request expired, kill it
@@ -152,8 +173,8 @@ void Agent::start() {
             }
         }
 
-        //  Disconnect and delete any expired servers
-        //  Send heartbeats to idle servers if needed
+        // Disconnect and delete any expired servers
+        // Send heartbeats to idle servers if needed
         all_servers_busy = true;
         item = (Server*) zhash_first(servers_);
         while(item) {

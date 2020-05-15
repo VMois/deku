@@ -12,7 +12,7 @@ services:
     command: ./build/requester.o
     tty: true
     links:
-      - responder
+      # - responder
       - redis
   redis:
     logging:

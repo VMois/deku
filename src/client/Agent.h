@@ -4,19 +4,32 @@
 extern "C" {
     #include <czmq.h>
 }
+#include "src/discover/RedisDiscover.h"
 #include "Server.h"
 
 //  If no server replies within this time, abandon request
-#define REQUEST_TIMEOUT  3000   //  msecs
+#define REQUEST_TIMEOUT  4000   //  msecs
+
+/* 
+How often should we update servers list from Redis.
+Should be less than REQUEST_TIMEOUT to avoid edge case bug 
+*/
+#define DISCOVERY_INTERVAL 2000  // msecs
 
 class Agent {
+    RedisDiscover redis_discover_;
     zsock_t *pipe_;
-    zpoller_t *poller_;
     zsock_t *router_;
+    zpoller_t *poller_;
+
     zhash_t *servers_;
     zmsg_t *request_;
+
+    uint64_t tickless_;
+    uint64_t next_discovery_;
     uint64_t expires_; 
 
+    void discover_servers();
     void process_control();
     void process_router();
     void unlock_servers();
