@@ -14,7 +14,7 @@ extern "C" {
 How often should we update servers list from Redis.
 Should be less than REQUEST_TIMEOUT to avoid edge case bug 
 */
-#define DISCOVERY_INTERVAL 2000  // msecs
+#define DISCOVERY_INTERVAL 1500  // msecs
 
 class Agent {
     RedisDiscover redis_discover_;

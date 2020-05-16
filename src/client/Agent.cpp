@@ -56,22 +56,9 @@ void Agent::process_control() {
         if (request_ != NULL) {
             throw std::logic_error("Request already exists, cannot process a new one");
         }
-        char* protocol_name = zmsg_popstr(msg);
-        char* task_name = zmsg_popstr(msg);
-        if (is_task_supported(task_name)) {
-            // Take ownership of request message
-            zmsg_pushstr(msg, task_name);
-            zmsg_pushstr(msg, protocol_name);
-            request_ = msg;
-            msg = NULL;
-            expires_ = zclock_mono() + REQUEST_TIMEOUT;
-        } else {
-            zmsg_t* not_found = zmsg_new();
-            zmsg_pushstr(not_found, "NOT_SUPPORTED");
-            zmsg_send(&not_found, pipe_);
-        }
-        free(protocol_name);
-        free(task_name);
+        request_ = msg;
+        msg = NULL;
+        expires_ = zclock_mono() + REQUEST_TIMEOUT;
     }
     free(command);
     zmsg_destroy(&msg);
@@ -139,6 +126,7 @@ void Agent::process_router() {
             request_ = NULL;
             unlock_servers();
         } else if (streq(status, "RESULT")) {
+            zmsg_pushstr(reply, status);
             zmsg_send(&reply, pipe_);
             zmsg_destroy(&request_);
             request_ = NULL;
@@ -167,7 +155,10 @@ void Agent::process_request() {
 
     if (zclock_mono() >= expires_) {
         //  Request expired, kill it
-        zstr_send(pipe_, "EXPIRED");
+        zmsg_t* expired = zmsg_new();
+        zmsg_pushstr(expired, "EXPIRED");
+        zmsg_pushstr(expired, "INTERNAL_ERROR");
+        zmsg_send(&expired, pipe_);
         zmsg_destroy(&request_);
         request_ = NULL;
         unlock_servers();

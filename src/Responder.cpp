@@ -40,7 +40,6 @@ void Responder::worker(zsock_t* task_receiver, zsock_t* result_submitter) {
         zmsg_prepend(results, &identity);
         zmsg_append(results, &control);
         zmsg_addstr(results, "RESULT");
-        zmsg_addstr(results, function_name.c_str());
         zmsg_addmem(results, output.str().data(), output.str().size());
         zmsg_send(&results, result_submitter);
     } 

@@ -14,5 +14,5 @@ class Requester {
     public:
         Requester();
         ~Requester();
-        std::stringstream send(std::string task_name, std::string data);
+        std::stringstream send(std::string task_name, std::string data = "");
 };

@@ -27,19 +27,32 @@ std::stringstream Requester::send(std::string task_name, std::string data) {
 
     zmsg_t *reply = request(&msg);
 
-    // TODO: when request expires it will trigger this exception, fix it.
     if (zmsg_size(reply) < 2) {
-        throw std::logic_error("Reply size is less than 2");
+        throw std::logic_error("Message size is less than 2");
     }
 
-    std::stringstream result_stream;
-    zframe_t *task = zmsg_pop(reply);
-    zframe_t *output = zmsg_pop(reply);
-    if (zframe_streq(task, task_name.c_str())) {
+    zframe_t* status = zmsg_pop(reply);
+    zframe_t* output = zmsg_pop(reply);
+    zmsg_destroy(&reply);
+
+    if (zframe_streq(status, "INTERNAL_ERROR")) {
+        zframe_destroy(&status);
+        std::logic_error error =  std::logic_error((char*) zframe_data(output));
+        zframe_destroy(&output);
+        throw error;
+    }
+
+    if (zframe_streq(status, "RESULT")) {
+        std::stringstream result_stream;
         result_stream.write((char*) zframe_data(output), zframe_size(output));
+        zframe_destroy(&status);
+        zframe_destroy(&output);
         return result_stream;
     }
-    throw std::logic_error("Submitted task name is not equal to reply task name. Possible bug");
+
+    zframe_destroy(&status);
+    zframe_destroy(&output);
+    throw std::logic_error("Unspecified status was returned. Possible bug");
 }
 
 static void worker(zsock_t *pipe, void *args) {
