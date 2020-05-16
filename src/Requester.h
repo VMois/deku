@@ -5,7 +5,7 @@ extern "C" {
     #include <czmq.h>
 }
 
-#include "client/Agent.h"
+#include "agent/Agent.h"
 
 class Requester {
     zactor_t *worker_;

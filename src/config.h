@@ -10,4 +10,4 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-std::string getLocalIPv4Address();
+std::string getLocalEndpointAddress();

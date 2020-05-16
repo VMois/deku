@@ -4,7 +4,7 @@
 extern "C" {
     #include <czmq.h>
 }
-#include "src/discover/RedisDiscover.h"
+#include "src/RedisDiscover.h"
 #include "Server.h"
 
 //  If no server replies within this time, abandon request

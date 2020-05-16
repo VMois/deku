@@ -1,7 +1,8 @@
 #include "config.h"
 
-// Returns local IP address
-std::string getLocalIPv4Address() {
+// returns local endpoint address. Example: "tcp://192.168.1.2:3434"
+std::string getLocalEndpointAddress() {
+    // Solution taken from
     // https://stackoverflow.com/questions/49335001/get-local-ip-address-in-c
     int sock = socket(PF_INET, SOCK_DGRAM, 0);
     sockaddr_in loopback;

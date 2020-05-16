@@ -20,11 +20,14 @@ std::vector<std::string> Responder::listTasks() {
 
 void Responder::worker(zsock_t* task_receiver, zsock_t* result_submitter) {
     while(true) {
-        zmsg_t* task = zmsg_recv(task_receiver);
-        zframe_t *identity = zmsg_pop(task);
-        zframe_t *control = zmsg_pop(task);
-        zframe_t *func_name = zmsg_pop(task);
-        zframe_t *input_frame = zmsg_pop(task);
+        // wait for a new job
+        zmsg_t* job = zmsg_recv(task_receiver);
+
+        // unpack job details
+        zframe_t *identity = zmsg_pop(job);
+        zframe_t *control = zmsg_pop(job);
+        zframe_t *func_name = zmsg_pop(job);
+        zframe_t *input_frame = zmsg_pop(job);
 
         std::string function_name((char*) zframe_data(func_name), zframe_size(func_name));
         std::stringstream input;
@@ -46,16 +49,19 @@ void Responder::worker(zsock_t* task_receiver, zsock_t* result_submitter) {
 }
 
 void Responder::start() {
-    address_ = getLocalIPv4Address();
+    address_ = getLocalEndpointAddress();
 
+    // launch RedisDiscover in seprate thread for continuos discover
     std::thread discover_thread(&RedisDiscover::notifyService, &redis_discover_, address_, listTasks());
     if (discover_thread.joinable()) {
         discover_thread.detach();
     }
-    
-    // TODO: destroy sockets on Ctrl+C/Z
+
+    // prepare sockets for main thread and worker
     zsock_t *server = zsock_new(ZMQ_ROUTER);
     zsock_set_identity(server, address_.c_str());
+
+    // listen for incoming connections on port 3434 (default)
     zsock_bind(server, "tcp://*:3434");
 
     zsock_t *task_sender = zsock_new(ZMQ_PUSH);
@@ -73,50 +79,59 @@ void Responder::start() {
     zpoller_t* poller = zpoller_new(server);
     zpoller_add(poller, result_receiver);
 
-    // launch single worker
+    // launch a single worker
     std::thread w(&Responder::worker, this, task_receiver, result_submitter);
     w.detach();
 
     bool already_job = false;
     while (true) {
+        // wait for incoming message to server or for job to be finished by worker
         zsock_t* which = (zsock_t *) zpoller_wait(poller, 1 * ZMQ_POLL_MSEC);
+        
         if (which == result_receiver) {
-            // job results are ready to be sent
+            // job is finished, send results back
             zmsg_t *job = zmsg_recv(result_receiver);
             zmsg_send(&job, server);
             already_job = false;
         } else if (which == server) {
-            // process incoming request
+            // process incoming message from the Requester
             zmsg_t *request = zmsg_recv(server);
 
+            // print message, for debug purposes
             zmsg_dump(request);
+
             zframe_t *identity = zmsg_pop(request);
             zframe_t *control = zmsg_pop(request);
 
-            zmsg_t *reply = zmsg_new ();
+            zmsg_t *reply = zmsg_new();
 
             if (zframe_streq (control, "PING")) {
                 zmsg_addstr(reply, "PONG");
             } else if (zframe_streq(control, "TASK")) {
-                // new job
                 if (!already_job) {
+                    // we can process this job
                     zframe_t *function_name_frame = zmsg_pop(request);
                     zframe_t *function_data_frame = zmsg_pop(request);
 
+                    // prepare message for worker
                     zmsg_t *task = zmsg_new ();
                     zframe_t* identity_copy = zframe_dup(identity);
                     zframe_t* control_copy = zframe_dup(control);
                     zmsg_prepend(task, &identity_copy);
                     zmsg_append(task, &control_copy);
                     zmsg_append(task, &function_name_frame);
-                    // TODO: instead of copying data pass a pointer
+                    // TODO: instead of copying data pass a pointer to save memory
                     zmsg_append(task, &function_data_frame);
 
+                    // send a job to a worker thread
                     zmsg_send(&task, task_sender);
                     already_job = true;
+
+                    // reply to Requester that job was accepted
                     zmsg_append(reply, &control);
                     zmsg_addstr(reply, "OK");
                 } else {
+                    // if job already processed,
                     zmsg_append(reply, &control);
                     zmsg_addstr(reply, "BUSY");
                 }
@@ -127,8 +142,12 @@ void Responder::start() {
             }
 
             zmsg_destroy(&request);
+
+            // add address of Requester
             zmsg_prepend(reply, &identity);
             zmsg_send(&reply, server);
         }
     }
+
+    // TODO: destroy sockets on Ctrl+C/Z, add singals handling using lambda function
 }

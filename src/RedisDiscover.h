@@ -11,11 +11,11 @@ extern "C" {
 class RedisDiscover {
     redisContext *redis_client_;
     std::string tasks_list_;
-
+    
     std::string getRedisHostNameFromEnv();
 
     public:
-        RedisDiscover();
+        RedisDiscover(): redis_client_(NULL), tasks_list_("deku_tasks") {};
         ~RedisDiscover();
 
         std::vector<std::string> getAddresses(std::string task_name);
