@@ -75,7 +75,6 @@ void Responder::start() {
     zpoller_add(poller, result_receiver);
 
     // launch single worker
-    // TODO: think about replacing it with zactor from ZeroMQ
     std::thread w(&Responder::worker, this, task_receiver, result_submitter);
     w.detach();
 
@@ -90,6 +89,7 @@ void Responder::start() {
         } else if (which == server) {
             // process incoming request
             zmsg_t *request = zmsg_recv(server);
+
             zmsg_dump(request);
             zframe_t *identity = zmsg_pop(request);
             zframe_t *control = zmsg_pop(request);

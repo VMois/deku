@@ -29,6 +29,9 @@ class Agent {
     uint64_t next_discovery_;
     uint64_t expires_; 
 
+    bool is_task_supported(char* task_name);
+    void process_request();
+    void update_ping_time();
     void discover_servers();
     void process_control();
     void process_router();

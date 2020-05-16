@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <set>
 extern "C" {
     #include "czmq.h"
 }
@@ -16,7 +17,9 @@ class Server {
         bool busy_;
         int64_t ping_at_;
         int64_t expires_;
+        std::set<std::string> supported_tasks_;
         Server(std::string endpoint);
+
         void refreshTimers();
         void ping(zsock_t *socket);
 };
