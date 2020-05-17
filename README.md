@@ -128,8 +128,8 @@ Root files structure:
 
 External libraries used:
 
-- `hiredis`, C library to connect to Redis
-- `czmq`, high-level C Binding for ZeroMQ
+- `hiredis`, C library to connect to Redis ([link](https://github.com/redis/hiredis))
+- `czmq`, high-level C Binding for ZeroMQ ([link](https://github.com/zeromq/czmq))
 
 <a name="class"></a>
 
