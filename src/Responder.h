@@ -3,24 +3,28 @@
 #include <sstream>
 #include <map>
 #include <thread>
-#include "spdlog/spdlog.h"
-#include "spdlog/fmt/bin_to_hex.h"
-#include "src/multiaddr/Multiaddr.h"
-#include "src/discover/RedisDiscover.h"
-#include "src/Transport.h"
-#include "src/Packer.h"
-#include "msgpack.hpp"
+#include <iostream>
+extern "C" {
+    #include <czmq.h>
+}
+
+#include "RedisDiscover.h"
+#include "config.h"
 
 class Responder {
-    Multiaddr multiaddr_;
+    std::string address_;
     RedisDiscover redis_discover_;
-    Transport transport_;
     std::map<std::string, std::function <void(const std::stringstream&, std::stringstream&)>> handlers_;
     std::vector<std::string> listTasks();
-  public:
-    Responder();
-    void on(std::string task_name, std::function <void(const std::stringstream&, std::stringstream&)> handler);
-    void run(std:: string task_name, const std::stringstream& input, std::stringstream& output);
 
-    void start();
+    // worker method to process jobs
+    void worker(zsock_t* task_receiver, zsock_t* result_submitter);
+
+    public:
+      // register lambda function under particular task name
+      void on(std::string task_name, std::function <void(const std::stringstream&, std::stringstream&)> handler);
+      void run(std:: string task_name, const std::stringstream& input, std::stringstream& output);
+
+      // launch workers and start listening for incoming connections
+      void start();
 };

@@ -8,23 +8,22 @@ TEST_OBJ = ${TEST_SOURCES:.cpp=.o}
 
 # -g: Use debugging symbols in gcc
 CFLAGS = -std=c++14 -Wall -Wextra
-LIBRARIES = -pthread -lhiredis -DSPDLOG_COMPILED_LIB -lspdlog
-PATHS = -Llibs -I. -Iinclude 
+LIBRARIES = -ldeku -pthread -lczmq -lzmq -lhiredis
+PATHS = -Llibs -I. -Iinclude
 
-build_docker: build_example
-	docker build -t deku .
+build_example_echo: build_lib
+	g++ ${CFLAGS} ${PATHS} examples/echo/responder.cpp ${LIBRARIES} -o build/responder.o
+	g++ ${CFLAGS} ${PATHS} examples/echo/requester.cpp ${LIBRARIES} -o build/requester.o
 
-run_tests: build_tests
-	build/tests.o
+build_example_file: build_lib
+	g++ ${CFLAGS} ${PATHS} examples/file/responder.cpp ${LIBRARIES} -o build/responder.o
+	g++ ${CFLAGS} ${PATHS} examples/file/requester.cpp ${LIBRARIES} -o build/requester.o
 
-build_tests: ${OBJ} ${TEST_OBJ}
-	g++ ${CFLAGS} ${PATHS} ${TEST_OBJ} ${OBJ} ${LIBRARIES} -o build/tests.o
+build_lib: ${OBJ}
+	ar rvs libs/libdeku.a src/*.o src/*/*.o
 
-build_example: ${OBJ} 
-	g++ ${CFLAGS} ${PATHS} ${OBJ} examples/responder.cpp ${LIBRARIES} -o build/responder.o
-	
 %.o: %.cpp ${HEADERS}
-	g++ ${CFLAGS} ${PATHS} ${LIBRARIES} -c $< -o $@
+	g++ ${CFLAGS} ${PATHS} -c $< -o $@
 
 clean:
 	rm -rf *.o *.a
