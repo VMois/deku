@@ -43,10 +43,11 @@ std::cout << reply.str() << std::endl;
 4. [Implementation](#impl)
     1. [Project structure](#structure)
     2. [External libraries](#external)
+    3. [Class structure](#class)
+    4. [Agent class](#agent)
 5. [Known issues](#issues)
 6. [Development](#dev)
-7. [Credits](#creds)
-8. [Why "Deku"?](#why)
+7. [Future](#future)
 
 ## Goal
 
@@ -98,7 +99,7 @@ Because *Deku* doesn't have a centralised scheduler, independent *Requesters* ar
 | Opcode(s)    | Description | States             |
 |:----------:|:-----------:|:------------------:|
 | PING/PONG  | check if Responder is alive by sending probe request ||
-| TASK       | accepting and rejecting jobs from Requester |   OK, BUSY, RESULT |
+| TASK       | accepting and rejecting jobs from Requester |   OK, BUSY, RESULT, ERROR |
 
 <a name="impl"></a>
 
@@ -106,16 +107,7 @@ Because *Deku* doesn't have a centralised scheduler, independent *Requesters* ar
 
 Here implementation details of the project are discussed.
 
-Deku is written in **C++14** and was tested only on **Linux**. Initially, I was thinking to use a raw sockets to develop the library, but after some time I realized that there are so many different edge cases and issues you can encounter. Instead, I decided to use an amazing networking and threading library called [ZeroMQ](https://zeromq.org). ZeroMQ not only simplifies the development of the project, but also allows, in future, to make *Deku* stable, performant and easy to use.
-
-<a name="external"></a>
-
-### External libraries
-
-External libraries used:
-
-- `hiredis`, C library to connect to Redis
-- `czmq`, high-level C Binding for ZeroMQ
+Deku is written in **C++14** and was tested only on **Linux** (in Docker Compose, manually). Initially, I was thinking to use a raw sockets to develop the library, but after some time I realized that there are so many different edge cases and issues you can encounter. Instead, I decided to use an amazing networking and threading library called [ZeroMQ](https://zeromq.org). ZeroMQ not only simplifies the development of the project, but also allows, in future, to make *Deku* stable, performant and easy to use.
 
 <a name="structure"></a>
 
@@ -130,26 +122,77 @@ Root files structure:
 - `src/` - source code (*.cpp and *.h extensions)
 - `Makefile` - collection of commands to build a C++ project
 
+<a name="external"></a>
+
+### External libraries
+
+External libraries used:
+
+- `hiredis`, C library to connect to Redis
+- `czmq`, high-level C Binding for ZeroMQ
+
+<a name="class"></a>
+
 ### Class structure
+
+*Deku* has two main classes:
+
+- Responder
+- Requester
+
+Both *Responder* and *Requester* are depending on *RedisDiscovery* class which provides the ability to connect to, register or fetch the available nodes from the Redis.
+
+In addition, *Requester* depends on *Agent* class (in `agent/` folder). *Agent* is responsible for sending and receiving requests, and it works inside the separate thread.
+
+Generally, class structure is very simple.
+
+<a name="agent"></a>
+
+### How it works
+
+*Responder's* implementation is straight-forward and doesn't require a discussion. Please, check a [Specification section](#spec) and code.
+
+*Requester* and *Agent* are fairly sophisticated and require a little bit of explanation. Implementation and flow of `Agent` class were taken and reworked from the [ZeroMQ guide (Freelance pattern section)](http://zguide.zeromq.org/page:all#toc112) (description is taken from the guide + some parts rewritten):
+
+- Multithreaded API. The *Requester API* consists of two parts, a synchronous *Requester* class that runs in the application thread, and an asynchronous *Agent* class that runs as a background thread. The *Requester* and *Agent* classes talk to each other with messages over an **inproc** socket (with help of `zactor`). The agent in effect acts like a mini-broker, talking to servers in the background, so that when we make a request, it can make a best effort to reach a server it believes is available. *Agent* checks if server (Responder) is not busy and if it supports the task Requester wants to excecute.
+
+- Tickless poll timer, the Agent uses a tickless timer, which calculates the poll delay based on the next timeout we're expecting. A proper implementation would keep an ordered list of timeouts. We just check all timeouts and calculate the poll delay until the next one.
+
+- Discovery, every `DISCOVERY_INTERVAL`, *Agent* fetches the servers from Redis and updates the known servers (check `Agent.discover_servers()`).
+
+All other details, can be found in the code. Thanks.
 
 <a name="issues"></a>
 
 ## Known issues
 
+As for now, *Deku* is very raw project with a lot of small and big issues. Some of them:
+
+- Agent (hence Requester) can process only one request at the time.
+- if Redis doesn't exist Responder and Requester will fail on a start time.
+- no exception classes specific for Deku are created. I am using `std::logic_error` now but this is not a good solution.
+- even after some fixes there is possibility that if Requester will start too early before Responder, it will not be able to send a message on time and it will expire. You will get and exception with `EXPIRED` message.
+
 <a name="dev"></a>
 
 ## Development
 
-Here you can find information how to setup a project and compile it by yourself.
+Here you can find information on how to setup a project and compile it by yourself. First of all, clone this repo.
 
-<a name="creds"></a>
+### Docker (only library compiling)
 
-## Credits
+The easiest way is to use Docker. Please, check `Dockerfile` where you can find all steps. Comment the last line (which is used for examples) and uncomment `make build_lib`. After building an image, you will find a compiled dynamic library in `libs/libdeku.a`. To use a library, you will need to install `czmq` and `hiredis` C libraries (check `Dockerfile`, simple `apt-get install`) and link them in your project. For an example of using it in the project check next section.
 
-...
+Docker version used during the development: **18.06.1-ce**
 
-<a name="why"></a>
+## Docker Compose (running an example)
 
-## Why "Deku"?
+Folder for examples is `examples/`. Replace `make build_lib` with `make build_example_echo` (or `make build_example_file`). Run `docker-compose up --build`. It will compile, build and launch two instances (Requester and Responder) that will excecute example program. Enjoy!
 
-...
+Docker-compose version used during the development: **1.25.4**
+
+<a name="future"></a>
+
+## Future
+
+Currently, *Deku* is raw and buggy. BUT, design, in my opinion, is simple and promising. With ZeroMQ, *Deku* will have a powerful networking and threading background. By adding multi-request support, enhancing API for users and making *Deku* more stable will give this library a chance to exist and possibly be used for some useful purposes :)

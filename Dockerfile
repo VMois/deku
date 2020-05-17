@@ -8,4 +8,10 @@ RUN apt-get install -y libczmq-dev libhiredis-dev=0.13.3-2.2
 
 COPY . /app/
 WORKDIR /app
-RUN make clean && make build_example_file
+RUN make clean
+
+# build lib only
+# RUN make build_lib 
+
+# build lib and compile an example
+RUN make build_example_file

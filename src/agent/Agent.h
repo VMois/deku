@@ -25,15 +25,22 @@ class Agent {
     zhash_t *servers_;
     zmsg_t *request_;
 
-    uint64_t tickless_;
-    uint64_t next_discovery_;
-    uint64_t expires_; 
+    uint64_t tickless_;  // how long to wait to the next event scheduled (ping, discover_servers or request expired)
+    uint64_t next_discovery_;  // when to fetch list of Responders from Redis
+    uint64_t expires_;   // when request will expire
 
-    bool is_task_supported(char* task_name);
+    // send a request if server is available
     void process_request();
+
     void update_ping_time();
+
+    // fetch list of Responders from Redis
     void discover_servers();
+
+    // process a single message from the Requester
     void process_control();
+
+    // this method processes a single message from a connected Responder
     void process_router();
     void unlock_servers();
 

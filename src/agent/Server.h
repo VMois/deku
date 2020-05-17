@@ -14,10 +14,10 @@ class Server {
     public:
         std::string endpoint_;
         bool alive_;
-        bool busy_;
-        int64_t ping_at_;
-        int64_t expires_;
-        std::set<std::string> supported_tasks_;
+        bool busy_;  // is server busy with job
+        int64_t ping_at_;  // when to ping next
+        int64_t expires_;  // when server will be considered as dead
+        std::set<std::string> supported_tasks_;  // list of tasks that server supports
         Server(std::string endpoint);
 
         void refreshTimers();

@@ -42,6 +42,14 @@ std::stringstream Requester::send(std::string task_name, std::string data) {
         throw error;
     }
 
+    if (zframe_streq(status, "ERROR")) {
+        zframe_destroy(&status);
+        std::string error_message = "Responder returned an error. Message: ";
+        error_message.append((char*) zframe_data(output));
+        zframe_destroy(&output);
+        throw std::logic_error(error_message);
+    }
+
     if (zframe_streq(status, "RESULT")) {
         std::stringstream result_stream;
         result_stream.write((char*) zframe_data(output), zframe_size(output));

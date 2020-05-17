@@ -21,6 +21,5 @@ class RedisDiscover {
         std::vector<std::string> getAddresses(std::string task_name);
         std::vector<std::string> getTasks();
         void notifyPeers(std::string address, std::vector<std::string> tasks);
-        void notifyService(std::string address, std::vector<std::string> tasks);
         void connect();
 };

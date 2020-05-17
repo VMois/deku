@@ -57,6 +57,7 @@ std::vector<std::string> RedisDiscover::getAddresses(std::string task_name) {
 }
 
 void RedisDiscover::notifyPeers(std::string address, std::vector<std::string> new_tasks) {
+    connect();
     if (redis_client_ == NULL) throw "Redis client is not available";
     redisReply *reply = NULL;
 
@@ -78,17 +79,5 @@ void RedisDiscover::notifyPeers(std::string address, std::vector<std::string> ne
             reply = (redisReply*) redisCommand(redis_client_, "LPUSH %s %s", task.c_str(), address.c_str());
             freeReplyObject(reply);
         }
-    }
-}
-
-// every 5 seconds, updates Responder's tasks in Redis
-void RedisDiscover::notifyService(std::string address, std::vector<std::string> tasks) {
-    connect();
-    std::chrono::seconds duration(5);
-
-    // TODO: possibly useless to update in the loop. Tasks are not changing.
-    while(1) {
-        notifyPeers(address, tasks);
-        std::this_thread::sleep_for(duration);
     }
 }

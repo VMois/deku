@@ -35,15 +35,18 @@ void Responder::worker(zsock_t* task_receiver, zsock_t* result_submitter) {
         std::stringstream output;
 
         // TODO: add try/catch block
-        this->run(function_name, input, output);
-
-        // TODO: what will happen if output stream is empty?
-
         zmsg_t* results = zmsg_new();
-        zmsg_prepend(results, &identity);
         zmsg_append(results, &control);
-        zmsg_addstr(results, "RESULT");
-        zmsg_addmem(results, output.str().data(), output.str().size());
+        try {
+            this->run(function_name, input, output);
+            zmsg_addstr(results, "RESULT");
+            // TODO: what will happen if output stream is empty?
+            zmsg_addmem(results, output.str().data(), output.str().size());
+        } catch (std::exception& e) {
+            zmsg_addstr(results, "ERROR");
+            zmsg_addstr(results, e.what());
+        }
+        zmsg_prepend(results, &identity);
         zmsg_send(&results, result_submitter);
     } 
 }
@@ -51,11 +54,8 @@ void Responder::worker(zsock_t* task_receiver, zsock_t* result_submitter) {
 void Responder::start() {
     address_ = getLocalEndpointAddress();
 
-    // launch RedisDiscover in seprate thread for continuos discover
-    std::thread discover_thread(&RedisDiscover::notifyService, &redis_discover_, address_, listTasks());
-    if (discover_thread.joinable()) {
-        discover_thread.detach();
-    }
+    // save task in Redis
+    redis_discover_.notifyPeers(address_, listTasks());
 
     // prepare sockets for main thread and worker
     zsock_t *server = zsock_new(ZMQ_ROUTER);
@@ -148,6 +148,6 @@ void Responder::start() {
             zmsg_send(&reply, server);
         }
     }
-
+    // TODO: deregister itself from Redis when exiting a program
     // TODO: destroy sockets on Ctrl+C/Z, add singals handling using lambda function
 }

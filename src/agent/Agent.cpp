@@ -36,26 +36,13 @@ static void s_server_free (void *argument) {
     delete server;
 }
 
-bool Agent::is_task_supported(char* task_name) {
-    const std::string task_name_str(task_name);
-    Server* item = (Server*) zhash_first(servers_);
-    while(item) {
-        if(item->supported_tasks_.find(task_name_str) != item->supported_tasks_.end()) {
-            return true;
-        }
-        item = (Server*) zhash_next(servers_);
-    }
-    return false;
-}
-
 void Agent::process_control() {
     zmsg_t *msg = zmsg_recv(pipe_);
     char *command = zmsg_popstr(msg);
 
+    // Requester asks to send a message
     if (streq(command, "REQUEST")) {
-        if (request_ != NULL) {
-            throw std::logic_error("Request already exists, cannot process a new one");
-        }
+        if (request_ != NULL) return;
         request_ = msg;
         msg = NULL;
         expires_ = zclock_mono() + REQUEST_TIMEOUT;
@@ -66,7 +53,7 @@ void Agent::process_control() {
 
 void Agent::discover_servers() {
     if (zclock_mono() < next_discovery_) {
-        // too early to discover new servers, skip
+        // too early to discover, skip
         return;
     }
 
@@ -102,7 +89,7 @@ void Agent::discover_servers() {
     tickless_ = next_discovery_;
 }
 
-// this method processes a single message from a connected server
+
 void Agent::process_router() {
     zmsg_t *reply = zmsg_recv(router_);
 
@@ -125,7 +112,7 @@ void Agent::process_router() {
             zmsg_destroy(&request_);
             request_ = NULL;
             unlock_servers();
-        } else if (streq(status, "RESULT")) {
+        } else if (streq(status, "RESULT") || streq(status, "ERROR")) {
             zmsg_pushstr(reply, status);
             zmsg_send(&reply, pipe_);
             zmsg_destroy(&request_);
