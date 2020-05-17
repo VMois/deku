@@ -1,0 +1,20 @@
+version: '3'
+services:
+  responder:
+    build: .
+    command: ./build/responder.o
+    tty: true
+    links:
+      # - requester
+      - redis
+  requester:
+    build: .
+    command: ./build/requester.o
+    tty: true
+    links:
+      - responder
+      - redis
+  redis:
+    logging:
+      driver: none
+    image: redis
