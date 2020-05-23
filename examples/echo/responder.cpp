@@ -5,7 +5,7 @@ int main() {
 
     r.on("echo", [] (const std::stringstream& input, std::stringstream& output) {
         zclock_sleep(100);
-        output.write(input.str().data(), input.str().size());
+        output << input.str();
     });
 
     r.on("exception", [] (const std::stringstream& input, std::stringstream& output) {

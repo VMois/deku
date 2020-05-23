@@ -1,7 +1,6 @@
 #include "Responder.h"
 
-void Responder::on(std::string task_name, 
-                   std::function <void(const std::stringstream&, std::stringstream&)> handler) {
+void Responder::on(std::string task_name, handler_t handler) {
     handlers_[task_name] = handler;
 };
 
@@ -11,10 +10,12 @@ void Responder::run(std::string task_name, const std::stringstream& input, std::
 
 std::vector<std::string> Responder::listTasks() {
     std::vector<std::string> tasks;
-    for (std::map<std::string, std::function <void(const std::stringstream&, std::stringstream&)>>::iterator it = handlers_.begin(); 
-        it != handlers_.end(); ++it) {
-            tasks.push_back(it->first);
-        }
+    tasks.reserve(handlers_.size());
+
+    for (auto const& pair : handlers_) {
+        tasks.push_back(pair.first);
+    }
+
     return tasks;
 }
 

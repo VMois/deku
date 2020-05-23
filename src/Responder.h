@@ -11,10 +11,12 @@ extern "C" {
 #include "RedisDiscover.h"
 #include "config.h"
 
+typedef std::function<void(const std::stringstream&, std::stringstream&)> handler_t;
+
 class Responder {
     std::string address_;
     RedisDiscover redis_discover_;
-    std::map<std::string, std::function <void(const std::stringstream&, std::stringstream&)>> handlers_;
+    std::map<std::string, handler_t> handlers_;
     std::vector<std::string> listTasks();
 
     // worker method to process jobs
@@ -22,7 +24,7 @@ class Responder {
 
     public:
       // register lambda function under particular task name
-      void on(std::string task_name, std::function <void(const std::stringstream&, std::stringstream&)> handler);
+      void on(std::string task_name, handler_t handler);
       void run(std:: string task_name, const std::stringstream& input, std::stringstream& output);
 
       // launch workers and start listening for incoming connections
